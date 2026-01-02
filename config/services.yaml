@@ -25,3 +25,26 @@ services:
     App\State\UserPasswordHasher:
         arguments:
             $processor: '@api_platform.doctrine.orm.state.persist_processor'
+    
+    App\State\TourUuidGenerator:
+        arguments:
+            $processor: '@api_platform.doctrine.orm.state.persist_processor'
+    
+    App\State\ShuttleScheduleUuidGenerator:
+        arguments:
+            $processor: '@api_platform.doctrine.orm.state.persist_processor'
+    
+    App\State\BookingUuidGenerator:
+        arguments:
+            $processor: '@api_platform.doctrine.orm.state.persist_processor'
+    
+    App\Service\EmailService:
+        arguments:
+            $fromEmail: '%env(MAILER_FROM_EMAIL)%'
+            $fromName: '%env(string:default::MAILER_FROM_NAME:)%'
+    
+    # Décorateur OpenAPI pour ajouter les endpoints d'authentification
+    App\OpenApi\JwtBearerDecorator:
+        decorates: 'api_platform.openapi.factory'
+        arguments: ['@App\OpenApi\JwtBearerDecorator.inner']
+        autoconfigure: false

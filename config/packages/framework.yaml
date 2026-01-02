@@ -8,6 +8,17 @@ framework:
     #esi: true
     #fragments: true
 
+    # Rate limiting pour la sécurité
+    rate_limiter:
+        login:
+            policy: 'fixed_window'
+            limit: 5
+            interval: '1 minute'
+        register:
+            policy: 'fixed_window'
+            limit: 3
+            interval: '1 hour'
+
 when@test:
     framework:
         test: true

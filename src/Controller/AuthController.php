@@ -91,5 +91,51 @@ class AuthController extends AbstractController
             ],
         ], Response::HTTP_CREATED);
     }
+
+    #[Route('/me', name: 'me', methods: ['GET'])]
+    public function me(): JsonResponse
+    {
+        $user = $this->getUser();
+
+        if (!$user instanceof User) {
+            return new JsonResponse(
+                ['message' => 'Token invalide ou expiré', 'valid' => false],
+                Response::HTTP_UNAUTHORIZED
+            );
+        }
+
+        return new JsonResponse([
+            'valid' => true,
+            'user' => [
+                'id' => $user->getId(),
+                'email' => $user->getEmail(),
+                'roles' => $user->getRoles(),
+            ],
+        ], Response::HTTP_OK);
+    }
+
+    #[Route('/refresh', name: 'refresh', methods: ['POST'])]
+    public function refresh(): JsonResponse
+    {
+        $user = $this->getUser();
+
+        if (!$user instanceof User) {
+            return new JsonResponse(
+                ['message' => 'Token invalide ou expiré'],
+                Response::HTTP_UNAUTHORIZED
+            );
+        }
+
+        // Générer un nouveau token
+        $newToken = $this->jwtManager->create($user);
+
+        return new JsonResponse([
+            'token' => $newToken,
+            'user' => [
+                'id' => $user->getId(),
+                'email' => $user->getEmail(),
+            ],
+        ], Response::HTTP_OK);
+    }
 }
 
