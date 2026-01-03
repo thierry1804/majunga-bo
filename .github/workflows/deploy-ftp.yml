@@ -56,109 +56,111 @@ jobs:
           php bin/console cache:clear --env=prod --no-debug || true
           php bin/console cache:warmup --env=prod --no-debug || true
 
-      - name: Préparation des fichiers pour le déploiement
+      - name: Préparation de l'archive ZIP
         run: |
           # Créer un répertoire de déploiement
           mkdir -p deploy
           
-          # Copier les fichiers nécessaires (sans vendor pour éviter les timeouts)
-          cp -r bin deploy/
-          cp -r config deploy/
-          cp -r migrations deploy/
-          cp -r public deploy/
-          cp -r src deploy/
-          cp -r templates deploy/
-          cp composer.json deploy/
-          cp composer.lock deploy/
-          cp symfony.lock deploy/ 2>/dev/null || true
+          # Créer l'archive ZIP de tout le projet (sauf fichiers sensibles)
+          echo "Création de l'archive ZIP complète..."
+          zip -r deploy/deployment.zip . \
+            -x "*.git*" \
+            -x "*/.env*" \
+            -x "*/.env.local*" \
+            -x "*/.env.*.local" \
+            -x "*/var/cache/*" \
+            -x "*/var/log/*" \
+            -x "*/var/sessions/*" \
+            -x "*/node_modules/*" \
+            -x "*/.DS_Store" \
+            -x "*/Thumbs.db" \
+            -x "*/compose.yaml" \
+            -x "*/compose.override.yaml" \
+            -x "*/*.md" \
+            -x "*/tests/*" \
+            -x "*/.phpunit.result.cache" \
+            -x "*/config/jwt/*.pem" \
+            -x "*/config/secrets/prod/prod.decrypt.private.php"
           
-          # Copier le .htaccess à la racine (redirection vers public/)
-          cp .htaccess deploy/ 2>/dev/null || true
-          
-          # Copier les scripts de diagnostic et correction (à supprimer après utilisation)
-          cp public/diagnostic.php deploy/public/ 2>/dev/null || true
-          cp public/fix-config.php deploy/public/ 2>/dev/null || true
-          
-          # Créer le répertoire var pour le cache
-          mkdir -p deploy/var
-          touch deploy/var/.gitkeep
-          
-          # Ne PAS copier le fichier .env créé pour le build (il sera créé sur le serveur)
-          
-          # Créer une archive compressée de vendor pour réduire le temps de transfert
-          echo "Création de l'archive vendor..."
-          tar -czf deploy/vendor.tar.gz vendor/
+          echo "Archive créée : $(du -h deploy/deployment.zip | cut -f1)"
           
           # Créer un script PHP pour décompresser l'archive sur le serveur
           # Le script est placé dans public/ pour être accessible via le navigateur
-          cat > deploy/public/extract-vendor.php << 'PHPEOF'
+          cat > deploy/extract-deployment.php << 'PHPEOF'
           <?php
           /**
-           * Script de décompression automatique de vendor.tar.gz
-           * À exécuter une fois après le déploiement via : https://api.madabooking.mg/extract-vendor.php
-           * OU via SSH : php public/extract-vendor.php
+           * Script de décompression automatique de deployment.zip
+           * À exécuter une fois après le déploiement via : https://api.madabooking.mg/extract-deployment.php
+           * OU via SSH : php extract-deployment.php
            * 
            * IMPORTANT : Supprimez ce fichier après utilisation pour des raisons de sécurité !
            */
           
-          // L'archive est à la racine du projet (un niveau au-dessus de public/)
-          $rootPath = dirname(__DIR__);
-          $archivePath = $rootPath . '/vendor.tar.gz';
-          $extractPath = $rootPath;
+          header('Content-Type: text/html; charset=utf-8');
+          
+          $archivePath = __DIR__ . '/deployment.zip';
+          $extractPath = __DIR__;
           
           // Vérifier que l'archive existe
           if (!file_exists($archivePath)) {
               http_response_code(404);
-              die("Erreur: L'archive vendor.tar.gz n'existe pas dans " . $rootPath . "\n");
+              die("<h1>Erreur</h1><p>L'archive deployment.zip n'existe pas dans " . $extractPath . "</p>");
           }
           
-          // Vérifier que PharData est disponible
-          if (!class_exists('PharData')) {
+          // Vérifier que ZipArchive est disponible
+          if (!class_exists('ZipArchive')) {
               http_response_code(500);
-              die("Erreur: L'extension Phar n'est pas disponible. Contactez votre administrateur système.\n");
+              die("<h1>Erreur</h1><p>L'extension ZipArchive n'est pas disponible. Contactez votre administrateur système.</p>");
           }
           
-          // Supprimer le dossier vendor existant s'il existe
-          if (is_dir($extractPath . '/vendor')) {
-              echo "Le dossier vendor existe déjà. Suppression...\n<br>";
-              flush();
-              deleteDirectory($extractPath . '/vendor');
-          }
-          
-          echo "Extraction de l'archive vendor.tar.gz...\n<br>";
+          echo "<h1>Décompression en cours...</h1>";
+          echo "<pre>";
           flush();
           
           try {
-              $phar = new PharData($archivePath);
-              $phar->extractTo($extractPath);
+              $zip = new ZipArchive;
+              $result = $zip->open($archivePath);
               
-              echo "<strong>Extraction terminée avec succès!</strong>\n<br>";
-              echo "Vous pouvez maintenant supprimer ce script (extract-vendor.php) et l'archive (vendor.tar.gz) pour des raisons de sécurité.\n";
+              if ($result === TRUE) {
+                  echo "Extraction de l'archive deployment.zip...\n";
+                  flush();
+                  
+                  // Extraire l'archive
+                  $zip->extractTo($extractPath);
+                  $zip->close();
+                  
+                  // Créer les dossiers var nécessaires s'ils n'existent pas
+                  $requiredDirs = ['var/cache', 'var/log', 'var/sessions'];
+                  foreach ($requiredDirs as $dir) {
+                      $fullPath = $extractPath . '/' . $dir;
+                      if (!is_dir($fullPath)) {
+                          mkdir($fullPath, 0777, true);
+                          echo "Dossier créé : $dir\n";
+                      }
+                      chmod($fullPath, 0777);
+                  }
+                  
+                  echo "\n<strong style='color: green;'>✅ Décompression terminée avec succès!</strong>\n";
+                  echo "\nProchaines étapes :\n";
+                  echo "1. Vérifiez que le fichier .env.local existe avec vos configurations\n";
+                  echo "2. Videz le cache : php bin/console cache:clear --env=prod\n";
+                  echo "3. Supprimez ce script (extract-deployment.php) et l'archive (deployment.zip) pour des raisons de sécurité\n";
+              } else {
+                  throw new Exception("Impossible d'ouvrir l'archive. Code d'erreur : $result");
+              }
           } catch (Exception $e) {
               http_response_code(500);
-              die("Erreur lors de l'extraction: " . $e->getMessage() . "\n");
+              die("<h1>Erreur</h1><p>Erreur lors de la décompression : " . htmlspecialchars($e->getMessage()) . "</p>");
           }
           
-          function deleteDirectory($dir) {
-              if (!file_exists($dir)) {
-                  return true;
-              }
-              if (!is_dir($dir)) {
-                  return unlink($dir);
-              }
-              foreach (scandir($dir) as $item) {
-                  if ($item == '.' || $item == '..') {
-                      continue;
-                  }
-                  if (!deleteDirectory($dir . DIRECTORY_SEPARATOR . $item)) {
-                      return false;
-                  }
-              }
-              return rmdir($dir);
-          }
+          echo "</pre>";
           PHPEOF
+          
+          # Copier le script dans public/ pour qu'il soit accessible via le navigateur
+          mkdir -p deploy/public
+          cp deploy/extract-deployment.php deploy/public/
 
-      - name: Déploiement via FTP
+      - name: Déploiement de l'archive via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
           server: ${{ secrets.FTP_SERVER }}
@@ -171,20 +173,6 @@ jobs:
           exclude: |
             **/.git*
             **/.git*/**
-            **/node_modules/**
-            **/.env*
-            **/.env.local*
-            **/.env.*.local
-            **/var/cache/**
-            **/var/log/**
-            **/var/sessions/**
-            **/.DS_Store
-            **/Thumbs.db
-            **/compose.yaml
-            **/compose.override.yaml
-            **/*.md
-            **/tests/**
-            **/.phpunit.result.cache
 
       - name: Nettoyage
         if: always()

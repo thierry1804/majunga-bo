@@ -53,9 +53,15 @@ Le workflow effectue les étapes suivantes :
 2. ✅ Configuration de PHP 8.2
 3. ✅ Installation des dépendances Composer (mode production)
 4. ✅ Optimisation du cache Symfony
-5. ✅ Préparation des fichiers pour le déploiement
-6. ✅ Upload des fichiers via FTP
+5. ✅ Création d'une archive ZIP complète du projet (sauf fichiers sensibles)
+6. ✅ Upload de l'archive `deployment.zip` et du script `extract-deployment.php` via FTP
 7. ✅ Nettoyage des fichiers temporaires
+
+**Avantages de cette approche :**
+- ✅ Un seul fichier à transférer (pas de timeout)
+- ✅ Plus rapide et plus fiable
+- ✅ Plus simple à gérer
+- ✅ Tous les fichiers sont inclus (vendor, config, etc.)
 
 ## Configuration du Serveur de Production
 
@@ -146,30 +152,40 @@ server {
 }
 ```
 
-## Installation des Dépendances
+## Installation et Décompression
 
-**Le workflow déploie `vendor` sous forme d'archive compressée** (`vendor.tar.gz`) pour éviter les timeouts FTP lors du transfert de ~6765 fichiers.
+**Le workflow crée une archive ZIP complète** (`deployment.zip`) contenant tout le projet (sauf les fichiers sensibles comme `.env`). Cette approche est plus simple, plus rapide et plus fiable que de transférer des milliers de fichiers individuellement.
 
-### Extraction de l'archive vendor
+### Décompression de l'archive
 
-Après chaque déploiement, vous devez extraire l'archive `vendor.tar.gz` sur le serveur. Deux méthodes sont disponibles :
+Après chaque déploiement, vous devez décompresser l'archive `deployment.zip` sur le serveur. Deux méthodes sont disponibles :
 
 #### Méthode 1 : Via le navigateur (Recommandé si pas d'accès SSH)
 
-1. Accédez à : `https://api.madabooking.mg/extract-vendor.php`
-2. Le script décompresse automatiquement l'archive `vendor.tar.gz` à la racine du projet
-3. **IMPORTANT :** Une fois terminé, supprimez immédiatement le fichier `extract-vendor.php` (dans `public/`) et l'archive `vendor.tar.gz` (à la racine) pour des raisons de sécurité
+1. Accédez à : `https://api.madabooking.mg/extract-deployment.php`
+2. Le script décompresse automatiquement l'archive `deployment.zip` à la racine du projet
+3. Les dossiers `var/cache`, `var/log` et `var/sessions` sont créés automatiquement avec les bonnes permissions
+4. **IMPORTANT :** Une fois terminé, supprimez immédiatement :
+   - Le fichier `extract-deployment.php` (dans `public/` et à la racine)
+   - L'archive `deployment.zip` (à la racine)
+   
+   Pour des raisons de sécurité.
 
 #### Méthode 2 : Via SSH (si disponible)
 
 ```bash
 cd /chemin/vers/votre/projet
-php extract-vendor.php
-# Puis supprimez les fichiers :
-rm extract-vendor.php vendor.tar.gz
+php extract-deployment.php
+# Ou directement avec unzip :
+unzip -o deployment.zip
+rm deployment.zip extract-deployment.php public/extract-deployment.php
+
+# Créer les dossiers var nécessaires
+mkdir -p var/cache var/log var/sessions
+chmod -R 777 var/
 ```
 
-**Important :** Supprimez toujours `extract-vendor.php` après utilisation pour des raisons de sécurité, car ce script pourrait être utilisé par des personnes malveillantes.
+**Important :** Supprimez toujours `extract-deployment.php` après utilisation pour des raisons de sécurité.
 
 ## Configuration Apache
 
