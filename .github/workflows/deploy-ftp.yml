@@ -75,8 +75,9 @@ jobs:
           # Copier le .htaccess à la racine (redirection vers public/)
           cp .htaccess deploy/ 2>/dev/null || true
           
-          # Copier le script de diagnostic (à supprimer après utilisation)
+          # Copier les scripts de diagnostic et correction (à supprimer après utilisation)
           cp public/diagnostic.php deploy/public/ 2>/dev/null || true
+          cp public/fix-config.php deploy/public/ 2>/dev/null || true
           
           # Créer le répertoire var pour le cache
           mkdir -p deploy/var
