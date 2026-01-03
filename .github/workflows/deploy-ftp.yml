@@ -84,76 +84,224 @@ jobs:
           
           echo "Archive créée : $(du -h deploy/deployment.zip | cut -f1)"
           
-          # Créer un script PHP pour décompresser l'archive sur le serveur
-          cat > deploy/extract-deployment.php << 'PHPEOF'
+          # Créer un script PHP complet qui automatise tout
+          cat > deploy/deploy.php << 'PHPEOF'
           <?php
           /**
-           * Script de décompression automatique de deployment.zip
-           * À exécuter une fois après le déploiement via : https://api.madabooking.mg/extract-deployment.php
-           * OU via SSH : php extract-deployment.php
+           * Script de déploiement automatique complet
            * 
+           * Ce script :
+           * 1. Extrait l'archive deployment.zip
+           * 2. Crée les dossiers nécessaires
+           * 3. Exécute les migrations de base de données
+           * 4. Vide et optimise le cache
+           * 5. Nettoie les fichiers temporaires
+           * 
+           * Utilisation :
+           * - Via le navigateur : https://api.madabooking.mg/deploy.php?token=VOTRE_TOKEN_SECRET
+           * - Via SSH : php deploy.php
+           * 
+           * IMPORTANT : Configurez un token secret dans .env.local : DEPLOY_TOKEN=votre_token_secret
            * IMPORTANT : Supprimez ce fichier après utilisation pour des raisons de sécurité !
            */
           
           header('Content-Type: text/html; charset=utf-8');
           
-          $archivePath = __DIR__ . '/deployment.zip';
-          $extractPath = __DIR__;
+          $rootPath = __DIR__;
+          $archivePath = $rootPath . '/deployment.zip';
           
-          // Vérifier que l'archive existe
-          if (!file_exists($archivePath)) {
-              http_response_code(404);
-              die("<h1>Erreur</h1><p>L'archive deployment.zip n'existe pas dans " . $extractPath . "</p>");
+          // Vérification du token de sécurité (si appelé via HTTP)
+          if (php_sapi_name() !== 'cli') {
+              // Charger .env.local pour vérifier le token
+              $envPath = $rootPath . '/.env.local';
+              $deployToken = null;
+              if (file_exists($envPath)) {
+                  $envContent = file_get_contents($envPath);
+                  if (preg_match('/^DEPLOY_TOKEN=(.+)$/m', $envContent, $matches)) {
+                      $deployToken = trim($matches[1], '"\'');
+                  }
+              }
+              
+              $providedToken = $_GET['token'] ?? null;
+              if ($deployToken && $providedToken !== $deployToken) {
+                  http_response_code(403);
+                  die("<h1>Accès refusé</h1><p>Token invalide. Configurez DEPLOY_TOKEN dans .env.local et utilisez-le dans l'URL : ?token=VOTRE_TOKEN</p>");
+              }
           }
           
-          // Vérifier que ZipArchive est disponible
-          if (!class_exists('ZipArchive')) {
-              http_response_code(500);
-              die("<h1>Erreur</h1><p>L'extension ZipArchive n'est pas disponible. Contactez votre administrateur système.</p>");
-          }
-          
-          echo "<h1>Décompression en cours...</h1>";
+          echo "<h1>🚀 Déploiement automatique en cours...</h1>";
           echo "<pre>";
           flush();
           
-          try {
-              $zip = new ZipArchive;
-              $result = $zip->open($archivePath);
-              
-              if ($result === TRUE) {
-                  echo "Extraction de l'archive deployment.zip...\n";
+          $errors = [];
+          $success = [];
+          
+          // 1. Extraction de l'archive
+          if (!file_exists($archivePath)) {
+              $errors[] = "L'archive deployment.zip n'existe pas";
+              echo "❌ Erreur : L'archive deployment.zip n'existe pas\n";
+          } else {
+              if (!class_exists('ZipArchive')) {
+                  $errors[] = "Extension ZipArchive non disponible";
+                  echo "❌ Erreur : L'extension ZipArchive n'est pas disponible\n";
+              } else {
+                  echo "📦 Étape 1/5 : Extraction de l'archive...\n";
                   flush();
                   
-                  // Extraire l'archive
-                  $zip->extractTo($extractPath);
-                  $zip->close();
-                  
-                  // Créer les dossiers var nécessaires s'ils n'existent pas
-                  $requiredDirs = ['var/cache', 'var/log', 'var/sessions'];
-                  foreach ($requiredDirs as $dir) {
-                      $fullPath = $extractPath . '/' . $dir;
-                      if (!is_dir($fullPath)) {
-                          mkdir($fullPath, 0777, true);
-                          echo "Dossier créé : $dir\n";
+                  try {
+                      $zip = new ZipArchive;
+                      $result = $zip->open($archivePath);
+                      
+                      if ($result === TRUE) {
+                          $zip->extractTo($rootPath);
+                          $zip->close();
+                          echo "✅ Archive extraite avec succès\n";
+                          $success[] = "Archive extraite";
+                      } else {
+                          throw new Exception("Impossible d'ouvrir l'archive. Code : $result");
                       }
-                      chmod($fullPath, 0777);
+                  } catch (Exception $e) {
+                      $errors[] = "Erreur lors de l'extraction : " . $e->getMessage();
+                      echo "❌ Erreur : " . $e->getMessage() . "\n";
                   }
-                  
-                  echo "\n<strong style='color: green;'>✅ Décompression terminée avec succès!</strong>\n";
-                  echo "\nProchaines étapes :\n";
-                  echo "1. Vérifiez que le fichier .env.local existe avec vos configurations\n";
-                  echo "2. Videz le cache : php bin/console cache:clear --env=prod\n";
-                  echo "3. Supprimez ce script (extract-deployment.php) et l'archive (deployment.zip) pour des raisons de sécurité\n";
-              } else {
-                  throw new Exception("Impossible d'ouvrir l'archive. Code d'erreur : $result");
               }
-          } catch (Exception $e) {
-              http_response_code(500);
-              die("<h1>Erreur</h1><p>Erreur lors de la décompression : " . htmlspecialchars($e->getMessage()) . "</p>");
           }
           
+          // 2. Création des dossiers nécessaires
+          echo "\n📁 Étape 2/5 : Création des dossiers...\n";
+          flush();
+          $requiredDirs = ['var/cache', 'var/log', 'var/sessions'];
+          foreach ($requiredDirs as $dir) {
+              $fullPath = $rootPath . '/' . $dir;
+              if (!is_dir($fullPath)) {
+                  if (mkdir($fullPath, 0777, true)) {
+                      echo "✅ Dossier créé : $dir\n";
+                      $success[] = "Dossier $dir créé";
+                  } else {
+                      $errors[] = "Impossible de créer $dir";
+                      echo "❌ Erreur : Impossible de créer $dir\n";
+                  }
+              }
+              if (is_dir($fullPath)) {
+                  chmod($fullPath, 0777);
+              }
+          }
+          
+          // 3. Vérification de l'autoloader
+          $autoloadPath = $rootPath . '/vendor/autoload.php';
+          if (!file_exists($autoloadPath)) {
+              $errors[] = "vendor/autoload.php non trouvé";
+              echo "\n❌ Erreur : vendor/autoload.php non trouvé. L'extraction a peut-être échoué.\n";
+          } else {
+              require_once $autoloadPath;
+              
+              // 4. Exécution des migrations
+              echo "\n🗄️ Étape 3/5 : Exécution des migrations de base de données...\n";
+              flush();
+              
+              try {
+                  require_once $rootPath . '/src/Kernel.php';
+                  $kernel = new \App\Kernel('prod', false);
+                  $kernel->boot();
+                  $application = new \Symfony\Bundle\FrameworkBundle\Console\Application($kernel);
+                  $application->setAutoExit(false);
+                  
+                  // Exécuter les migrations
+                  $input = new \Symfony\Component\Console\Input\ArrayInput([
+                      'command' => 'doctrine:migrations:migrate',
+                      '--no-interaction' => true,
+                      '--env' => 'prod',
+                  ]);
+                  $output = new \Symfony\Component\Console\Output\BufferedOutput();
+                  
+                  $exitCode = $application->run($input, $output);
+                  $migrationOutput = $output->fetch();
+                  
+                  if ($exitCode === 0) {
+                      echo "✅ Migrations exécutées avec succès\n";
+                      if ($migrationOutput) {
+                          echo $migrationOutput . "\n";
+                      }
+                      $success[] = "Migrations exécutées";
+                  } else {
+                      echo "⚠️ Migrations : " . $migrationOutput . "\n";
+                      $errors[] = "Erreur lors des migrations";
+                  }
+              } catch (Exception $e) {
+                  echo "⚠️ Impossible d'exécuter les migrations : " . $e->getMessage() . "\n";
+                  echo "   (Vous pouvez les exécuter manuellement : php bin/console doctrine:migrations:migrate --no-interaction)\n";
+              }
+              
+              // 5. Nettoyage du cache
+              echo "\n🧹 Étape 4/5 : Nettoyage et optimisation du cache...\n";
+              flush();
+              
+              try {
+                  $application = new \Symfony\Bundle\FrameworkBundle\Console\Application($kernel);
+                  $application->setAutoExit(false);
+                  
+                  // Vider le cache
+                  $input = new \Symfony\Component\Console\Input\ArrayInput([
+                      'command' => 'cache:clear',
+                      '--env' => 'prod',
+                      '--no-debug' => true,
+                  ]);
+                  $output = new \Symfony\Component\Console\Output\BufferedOutput();
+                  $application->run($input, $output);
+                  
+                  // Optimiser le cache
+                  $input = new \Symfony\Component\Console\Input\ArrayInput([
+                      'command' => 'cache:warmup',
+                      '--env' => 'prod',
+                      '--no-debug' => true,
+                  ]);
+                  $output = new \Symfony\Component\Console\Output\BufferedOutput();
+                  $application->run($input, $output);
+                  
+                  echo "✅ Cache optimisé\n";
+                  $success[] = "Cache optimisé";
+              } catch (Exception $e) {
+                  echo "⚠️ Erreur lors de l'optimisation du cache : " . $e->getMessage() . "\n";
+              }
+          }
+          
+          // 6. Nettoyage des fichiers temporaires
+          echo "\n🧹 Étape 5/5 : Nettoyage des fichiers temporaires...\n";
+          flush();
+          
+          $filesToDelete = [$archivePath, __FILE__];
+          foreach ($filesToDelete as $file) {
+              if (file_exists($file)) {
+                  if (unlink($file)) {
+                      echo "✅ Fichier supprimé : " . basename($file) . "\n";
+                      $success[] = "Fichier " . basename($file) . " supprimé";
+                  } else {
+                      echo "⚠️ Impossible de supprimer : " . basename($file) . "\n";
+                  }
+              }
+          }
+          
+          // Résumé
+          echo "\n" . str_repeat("=", 50) . "\n";
+          echo "<strong style='color: green;'>✅ Déploiement terminé !</strong>\n\n";
+          echo "Résumé :\n";
+          echo "- Succès : " . count($success) . "\n";
+          echo "- Erreurs : " . count($errors) . "\n";
+          
+          if (!empty($errors)) {
+              echo "\n⚠️ Erreurs rencontrées :\n";
+              foreach ($errors as $error) {
+                  echo "  - $error\n";
+              }
+          }
+          
+          echo "\n" . str_repeat("=", 50) . "\n";
           echo "</pre>";
           PHPEOF
+          
+          # Copier le script dans public/ pour qu'il soit accessible via le navigateur
+          mkdir -p deploy/public
+          cp deploy/deploy.php deploy/public/
           
       - name: Déploiement de l'archive ZIP via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
@@ -168,7 +316,7 @@ jobs:
           exclude: |
             **/.git*
             **/.git*/**
-            **/extract-deployment.php
+            **/deploy.php
 
       - name: Nettoyage
         if: always()

@@ -96,6 +96,9 @@ JWT_PASSPHRASE=votre_passphrase
 MAILER_DSN=smtp://user:pass@smtp.example.com:587
 MAILER_FROM_EMAIL="noreply@votre-domaine.com"
 MAILER_FROM_NAME="Votre Application"
+
+# Token de sécurité pour le script de déploiement (optionnel mais recommandé)
+DEPLOY_TOKEN=votre_token_secret_ici
 ```
 
 ### 3. Clés JWT
@@ -152,40 +155,40 @@ server {
 }
 ```
 
-## Installation et Décompression
+## Installation et Déploiement Automatique
 
-**Le workflow crée une archive ZIP complète** (`deployment.zip`) contenant tout le projet (sauf les fichiers sensibles comme `.env`). Cette approche est plus simple, plus rapide et plus fiable que de transférer des milliers de fichiers individuellement.
+**Le workflow crée une archive ZIP complète** (`deployment.zip`) contenant tout le projet (sauf les fichiers sensibles comme `.env`). Un script de déploiement automatique est inclus pour tout configurer.
 
-### Décompression de l'archive
+### Déploiement Automatique
 
-Après chaque déploiement, vous devez décompresser l'archive `deployment.zip` sur le serveur. Deux méthodes sont disponibles :
+Le script `deploy.php` automatise complètement le déploiement :
+1. ✅ Extrait l'archive `deployment.zip`
+2. ✅ Crée les dossiers nécessaires (`var/cache`, `var/log`, `var/sessions`)
+3. ✅ Exécute les migrations de base de données
+4. ✅ Vide et optimise le cache Symfony
+5. ✅ Nettoie les fichiers temporaires (supprime l'archive et le script)
 
-#### Méthode 1 : Via le navigateur (Recommandé si pas d'accès SSH)
+#### Méthode 1 : Via le navigateur (Recommandé)
 
-1. Accédez à : `https://api.madabooking.mg/extract-deployment.php`
-2. Le script décompresse automatiquement l'archive `deployment.zip` à la racine du projet
-3. Les dossiers `var/cache`, `var/log` et `var/sessions` sont créés automatiquement avec les bonnes permissions
-4. **IMPORTANT :** Une fois terminé, supprimez immédiatement :
-   - Le fichier `extract-deployment.php` (dans `public/` et à la racine)
-   - L'archive `deployment.zip` (à la racine)
-   
-   Pour des raisons de sécurité.
+1. **Configurez un token de sécurité** dans `.env.local` :
+   ```env
+   DEPLOY_TOKEN=votre_token_secret_ici
+   ```
+
+2. **Accédez à** : `https://api.madabooking.mg/deploy.php?token=votre_token_secret_ici`
+
+3. Le script exécute automatiquement toutes les étapes et se supprime à la fin.
 
 #### Méthode 2 : Via SSH (si disponible)
 
 ```bash
 cd /chemin/vers/votre/projet
-php extract-deployment.php
-# Ou directement avec unzip :
-unzip -o deployment.zip
-rm deployment.zip extract-deployment.php public/extract-deployment.php
-
-# Créer les dossiers var nécessaires
-mkdir -p var/cache var/log var/sessions
-chmod -R 777 var/
+php deploy.php
 ```
 
-**Important :** Supprimez toujours `extract-deployment.php` après utilisation pour des raisons de sécurité.
+Le script se supprime automatiquement après exécution.
+
+**Sécurité :** Le script se supprime automatiquement après utilisation. Si vous l'appelez via le navigateur, configurez toujours `DEPLOY_TOKEN` dans `.env.local` pour protéger l'accès.
 
 ## Configuration Apache
 
