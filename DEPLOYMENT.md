@@ -115,15 +115,12 @@ chmod -R 775 public/
 
 #### Apache
 
-Créez un fichier `.htaccess` dans le répertoire `public/` (si ce n'est pas déjà fait) :
+Les fichiers `.htaccess` sont déjà inclus dans le projet et seront déployés automatiquement :
 
-```apache
-<IfModule mod_rewrite.c>
-    RewriteEngine On
-    RewriteCond %{REQUEST_URI} !^/public/
-    RewriteRule ^(.*)$ public/$1 [L]
-</IfModule>
-```
+- **`.htaccess` à la racine** : Redirige toutes les requêtes vers `public/`
+- **`public/.htaccess`** : Configuration Symfony standard
+
+Assurez-vous que le module `mod_rewrite` est activé sur votre serveur Apache.
 
 #### Nginx
 
@@ -151,55 +148,38 @@ server {
 
 ## Installation des Dépendances
 
-**Par défaut, le workflow exclut le dossier `vendor`** pour réduire le nombre de fichiers transférés (de ~6765 à ~500 fichiers) et éviter les timeouts FTP.
+**Le workflow inclut le dossier `vendor`** dans le déploiement pour les serveurs qui n'ont pas accès à Composer ou SSH.
 
-### Installation sur le Serveur (Recommandé)
+**Note :** Cela transfère environ 6765 fichiers, ce qui peut prendre plus de temps. Si vous avez accès SSH et Composer sur votre serveur, vous pouvez modifier le workflow pour exclure `vendor` et l'installer directement sur le serveur (voir section "Dépannage").
 
-Après chaque déploiement, connectez-vous en SSH sur votre serveur et exécutez :
+## Configuration Apache
 
-```bash
-cd /chemin/vers/votre/projet
-composer install --no-dev --optimize-autoloader --no-interaction
-```
+Le projet inclut deux fichiers `.htaccess` :
 
-**Avantages :**
-- ✅ Réduit considérablement le nombre de fichiers transférés
-- ✅ Évite les timeouts de connexion FTP
-- ✅ Plus rapide et plus fiable
+1. **`.htaccess` à la racine** : Redirige toutes les requêtes vers le dossier `public/`
+2. **`public/.htaccess`** : Configuration Symfony standard pour le routage
 
-### Option Alternative : Inclure Vendor dans le Déploiement
-
-Si votre serveur n'a pas Composer installé, vous pouvez modifier le workflow pour inclure `vendor` :
-
-1. Dans `.github/workflows/deploy-ftp.yml`, décommentez la ligne :
-   ```yaml
-   cp -r vendor deploy/
-   ```
-2. Commentez ou supprimez la ligne qui exclut vendor
-
-**Note :** Cette option transfère beaucoup plus de fichiers (~6765) et peut causer des timeouts sur certains serveurs FTP.
+Ces fichiers sont automatiquement déployés avec le workflow. Si vous obtenez une erreur 403, vérifiez que :
+- Le module `mod_rewrite` est activé sur votre serveur Apache
+- Les fichiers `.htaccess` sont bien présents sur le serveur
+- Les permissions des fichiers sont correctes
 
 ## Vérification Post-Déploiement
 
-Après chaque déploiement, connectez-vous en SSH sur votre serveur et exécutez les commandes suivantes :
+Après chaque déploiement, si vous avez accès SSH, connectez-vous sur votre serveur et exécutez les commandes suivantes :
 
-1. ✅ **Installation des dépendances** (si vendor n'est pas inclus) :
-   ```bash
-   composer install --no-dev --optimize-autoloader --no-interaction
-   ```
-
-2. ✅ **Migrations de base de données** :
+1. ✅ **Migrations de base de données** :
    ```bash
    php bin/console doctrine:migrations:migrate --no-interaction
    ```
 
-3. ✅ **Optimisation du cache** :
+2. ✅ **Optimisation du cache** :
    ```bash
    php bin/console cache:clear --env=prod
    php bin/console cache:warmup --env=prod
    ```
 
-4. ✅ **Vérification de l'application** : Vérifiez que l'application est accessible via votre navigateur
+3. ✅ **Vérification de l'application** : Vérifiez que l'application est accessible via votre navigateur (ex: https://api.madabooking.mg/)
 
 ## Dépannage
 
