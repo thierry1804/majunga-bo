@@ -149,44 +149,82 @@ server {
 }
 ```
 
-## Options de Déploiement
+## Installation des Dépendances
 
-### Option 1 : Déploiement avec Vendor (Recommandé pour FTP)
+**Par défaut, le workflow exclut le dossier `vendor`** pour réduire le nombre de fichiers transférés (de ~6765 à ~500 fichiers) et éviter les timeouts FTP.
 
-Le workflow actuel inclut le dossier `vendor` dans le déploiement. C'est pratique si votre serveur n'a pas Composer installé.
+### Installation sur le Serveur (Recommandé)
 
-### Option 2 : Installation de Vendor sur le Serveur
+Après chaque déploiement, connectez-vous en SSH sur votre serveur et exécutez :
 
-Si votre serveur a Composer installé, vous pouvez modifier le workflow pour exclure `vendor` et l'installer directement sur le serveur :
+```bash
+cd /chemin/vers/votre/projet
+composer install --no-dev --optimize-autoloader --no-interaction
+```
 
-1. Modifiez le workflow pour ne pas copier `vendor`
-2. Après le déploiement, connectez-vous en SSH et exécutez :
-   ```bash
-   composer install --no-dev --optimize-autoloader
+**Avantages :**
+- ✅ Réduit considérablement le nombre de fichiers transférés
+- ✅ Évite les timeouts de connexion FTP
+- ✅ Plus rapide et plus fiable
+
+### Option Alternative : Inclure Vendor dans le Déploiement
+
+Si votre serveur n'a pas Composer installé, vous pouvez modifier le workflow pour inclure `vendor` :
+
+1. Dans `.github/workflows/deploy-ftp.yml`, décommentez la ligne :
+   ```yaml
+   cp -r vendor deploy/
    ```
+2. Commentez ou supprimez la ligne qui exclut vendor
+
+**Note :** Cette option transfère beaucoup plus de fichiers (~6765) et peut causer des timeouts sur certains serveurs FTP.
 
 ## Vérification Post-Déploiement
 
-Après chaque déploiement, vérifiez :
+Après chaque déploiement, connectez-vous en SSH sur votre serveur et exécutez les commandes suivantes :
 
-1. ✅ L'application est accessible
-2. ✅ Les migrations de base de données sont à jour :
+1. ✅ **Installation des dépendances** (si vendor n'est pas inclus) :
+   ```bash
+   composer install --no-dev --optimize-autoloader --no-interaction
+   ```
+
+2. ✅ **Migrations de base de données** :
    ```bash
    php bin/console doctrine:migrations:migrate --no-interaction
    ```
-3. ✅ Le cache est optimisé :
+
+3. ✅ **Optimisation du cache** :
    ```bash
    php bin/console cache:clear --env=prod
    php bin/console cache:warmup --env=prod
    ```
 
+4. ✅ **Vérification de l'application** : Vérifiez que l'application est accessible via votre navigateur
+
 ## Dépannage
 
-### Erreur de connexion FTP
+### Erreur de connexion FTP (ECONNRESET)
 
-- Vérifiez que les secrets GitHub sont correctement configurés
+Si vous rencontrez l'erreur `Error: Client is closed because read ECONNRESET (data socket)`, cela signifie que la connexion FTP a été interrompue pendant le transfert.
+
+**Solutions :**
+
+1. **Exclure vendor (recommandé)** : Le workflow exclut maintenant `vendor` par défaut. Installez les dépendances sur le serveur après le déploiement (voir section "Installation des Dépendances").
+
+2. **Vérifier les permissions FTP** : Assurez-vous que l'utilisateur FTP a les permissions nécessaires pour créer des dossiers et transférer des fichiers.
+
+3. **Vérifier la configuration du serveur FTP** :
+   - Le serveur doit accepter les connexions depuis GitHub Actions
+   - Certains serveurs nécessitent le mode passif FTP (activé par défaut dans l'action)
+   - Vérifiez les limites de timeout du serveur FTP
+
+4. **Logs détaillés** : Le workflow utilise `log-level: verbose` pour fournir plus d'informations en cas d'erreur.
+
+### Autres erreurs de connexion FTP
+
+- Vérifiez que les secrets GitHub sont correctement configurés dans l'environnement "production"
 - Vérifiez que le serveur FTP accepte les connexions depuis GitHub Actions
-- Certains serveurs nécessitent un mode passif FTP
+- Certains serveurs nécessitent un mode passif FTP (déjà activé par défaut)
 
 ### Erreurs de permissions
 

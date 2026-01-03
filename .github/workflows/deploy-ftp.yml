@@ -72,8 +72,11 @@ jobs:
           cp composer.lock deploy/
           cp symfony.lock deploy/ 2>/dev/null || true
           
-          # Copier vendor (ou commenter cette ligne si vous installez sur le serveur)
-          cp -r vendor deploy/
+          # IMPORTANT: vendor est exclu pour réduire le nombre de fichiers transférés
+          # et éviter les timeouts FTP. Installez les dépendances sur le serveur :
+          # ssh sur le serveur puis: composer install --no-dev --optimize-autoloader
+          # Si votre serveur n'a pas Composer, décommentez la ligne suivante :
+          # cp -r vendor deploy/
           
           # Créer le répertoire var pour le cache (sera créé automatiquement mais on s'assure qu'il existe)
           mkdir -p deploy/var
@@ -91,6 +94,8 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./deploy/
           server-dir: ${{ secrets.FTP_REMOTE_DIR }}
+          log-level: verbose
+          dangerous-clean-slate: false
           exclude: |
             **/.git*
             **/.git*/**
