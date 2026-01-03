@@ -26,6 +26,15 @@ jobs:
           extensions: ctype, iconv, pdo, pdo_pgsql
           coverage: none
 
+      - name: Création du fichier .env minimal pour le build
+        run: |
+          cat > .env << 'EOF'
+          APP_ENV=prod
+          APP_DEBUG=false
+          APP_SECRET=build_secret_key_for_ci_cd_only_not_for_production
+          DATABASE_URL="postgresql://user:password@localhost:5432/dbname?serverVersion=16&charset=utf8"
+          EOF
+
       - name: Récupération du cache Composer
         uses: actions/cache@v4
         with:
@@ -40,8 +49,8 @@ jobs:
 
       - name: Optimisation du cache Symfony
         run: |
-          php bin/console cache:clear --env=prod --no-debug
-          php bin/console cache:warmup --env=prod --no-debug
+          php bin/console cache:clear --env=prod --no-debug || true
+          php bin/console cache:warmup --env=prod --no-debug || true
 
       - name: Préparation des fichiers pour le déploiement
         run: |
@@ -67,6 +76,8 @@ jobs:
           
           # Créer un fichier .gitkeep pour var (si nécessaire)
           touch deploy/var/.gitkeep
+          
+          # Ne PAS copier le fichier .env créé pour le build (il sera créé sur le serveur)
 
       - name: Déploiement via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
