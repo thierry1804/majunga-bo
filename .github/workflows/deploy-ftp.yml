@@ -61,7 +61,7 @@ jobs:
           # Créer un répertoire de déploiement
           mkdir -p deploy
           
-          # Copier les fichiers nécessaires
+          # Copier les fichiers nécessaires (sans vendor pour éviter les timeouts)
           cp -r bin deploy/
           cp -r config deploy/
           cp -r migrations deploy/
@@ -75,16 +75,84 @@ jobs:
           # Copier le .htaccess à la racine (redirection vers public/)
           cp .htaccess deploy/ 2>/dev/null || true
           
-          # Copier vendor (nécessaire si le serveur n'a pas Composer)
-          cp -r vendor deploy/
-          
-          # Créer le répertoire var pour le cache (sera créé automatiquement mais on s'assure qu'il existe)
+          # Créer le répertoire var pour le cache
           mkdir -p deploy/var
-          
-          # Créer un fichier .gitkeep pour var (si nécessaire)
           touch deploy/var/.gitkeep
           
           # Ne PAS copier le fichier .env créé pour le build (il sera créé sur le serveur)
+          
+          # Créer une archive compressée de vendor pour réduire le temps de transfert
+          echo "Création de l'archive vendor..."
+          tar -czf deploy/vendor.tar.gz vendor/
+          
+          # Créer un script PHP pour décompresser l'archive sur le serveur
+          # Le script est placé dans public/ pour être accessible via le navigateur
+          cat > deploy/public/extract-vendor.php << 'PHPEOF'
+          <?php
+          /**
+           * Script de décompression automatique de vendor.tar.gz
+           * À exécuter une fois après le déploiement via : https://api.madabooking.mg/extract-vendor.php
+           * OU via SSH : php public/extract-vendor.php
+           * 
+           * IMPORTANT : Supprimez ce fichier après utilisation pour des raisons de sécurité !
+           */
+          
+          // L'archive est à la racine du projet (un niveau au-dessus de public/)
+          $rootPath = dirname(__DIR__);
+          $archivePath = $rootPath . '/vendor.tar.gz';
+          $extractPath = $rootPath;
+          
+          // Vérifier que l'archive existe
+          if (!file_exists($archivePath)) {
+              http_response_code(404);
+              die("Erreur: L'archive vendor.tar.gz n'existe pas dans " . $rootPath . "\n");
+          }
+          
+          // Vérifier que PharData est disponible
+          if (!class_exists('PharData')) {
+              http_response_code(500);
+              die("Erreur: L'extension Phar n'est pas disponible. Contactez votre administrateur système.\n");
+          }
+          
+          // Supprimer le dossier vendor existant s'il existe
+          if (is_dir($extractPath . '/vendor')) {
+              echo "Le dossier vendor existe déjà. Suppression...\n<br>";
+              flush();
+              deleteDirectory($extractPath . '/vendor');
+          }
+          
+          echo "Extraction de l'archive vendor.tar.gz...\n<br>";
+          flush();
+          
+          try {
+              $phar = new PharData($archivePath);
+              $phar->extractTo($extractPath);
+              
+              echo "<strong>Extraction terminée avec succès!</strong>\n<br>";
+              echo "Vous pouvez maintenant supprimer ce script (extract-vendor.php) et l'archive (vendor.tar.gz) pour des raisons de sécurité.\n";
+          } catch (Exception $e) {
+              http_response_code(500);
+              die("Erreur lors de l'extraction: " . $e->getMessage() . "\n");
+          }
+          
+          function deleteDirectory($dir) {
+              if (!file_exists($dir)) {
+                  return true;
+              }
+              if (!is_dir($dir)) {
+                  return unlink($dir);
+              }
+              foreach (scandir($dir) as $item) {
+                  if ($item == '.' || $item == '..') {
+                      continue;
+                  }
+                  if (!deleteDirectory($dir . DIRECTORY_SEPARATOR . $item)) {
+                      return false;
+                  }
+              }
+              return rmdir($dir);
+          }
+          PHPEOF
 
       - name: Déploiement via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4

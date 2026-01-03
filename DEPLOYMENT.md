@@ -148,9 +148,28 @@ server {
 
 ## Installation des Dépendances
 
-**Le workflow inclut le dossier `vendor`** dans le déploiement pour les serveurs qui n'ont pas accès à Composer ou SSH.
+**Le workflow déploie `vendor` sous forme d'archive compressée** (`vendor.tar.gz`) pour éviter les timeouts FTP lors du transfert de ~6765 fichiers.
 
-**Note :** Cela transfère environ 6765 fichiers, ce qui peut prendre plus de temps. Si vous avez accès SSH et Composer sur votre serveur, vous pouvez modifier le workflow pour exclure `vendor` et l'installer directement sur le serveur (voir section "Dépannage").
+### Extraction de l'archive vendor
+
+Après chaque déploiement, vous devez extraire l'archive `vendor.tar.gz` sur le serveur. Deux méthodes sont disponibles :
+
+#### Méthode 1 : Via le navigateur (Recommandé si pas d'accès SSH)
+
+1. Accédez à : `https://api.madabooking.mg/extract-vendor.php`
+2. Le script décompresse automatiquement l'archive `vendor.tar.gz` à la racine du projet
+3. **IMPORTANT :** Une fois terminé, supprimez immédiatement le fichier `extract-vendor.php` (dans `public/`) et l'archive `vendor.tar.gz` (à la racine) pour des raisons de sécurité
+
+#### Méthode 2 : Via SSH (si disponible)
+
+```bash
+cd /chemin/vers/votre/projet
+php extract-vendor.php
+# Puis supprimez les fichiers :
+rm extract-vendor.php vendor.tar.gz
+```
+
+**Important :** Supprimez toujours `extract-vendor.php` après utilisation pour des raisons de sécurité, car ce script pourrait être utilisé par des personnes malveillantes.
 
 ## Configuration Apache
 
@@ -183,20 +202,22 @@ Après chaque déploiement, si vous avez accès SSH, connectez-vous sur votre se
 
 ## Dépannage
 
-### Erreur de connexion FTP (ECONNRESET)
+### Erreur de connexion FTP (ECONNRESET ou timeout 900 secondes)
 
-Si vous rencontrez l'erreur `Error: Client is closed because read ECONNRESET (data socket)`, cela signifie que la connexion FTP a été interrompue pendant le transfert.
+Si vous rencontrez l'erreur `Error: Client is closed because read ECONNRESET` ou `421 No transfer timeout (900 seconds)`, cela signifie que la connexion FTP a été interrompue ou que le timeout du serveur a été atteint.
 
-**Solutions :**
+**Solution actuelle :** Le workflow utilise maintenant une archive compressée (`vendor.tar.gz`) au lieu de transférer ~6765 fichiers individuellement. Cela réduit considérablement le temps de transfert et évite les timeouts.
 
-1. **Exclure vendor (recommandé)** : Le workflow exclut maintenant `vendor` par défaut. Installez les dépendances sur le serveur après le déploiement (voir section "Installation des Dépendances").
+**Si le problème persiste :**
 
-2. **Vérifier les permissions FTP** : Assurez-vous que l'utilisateur FTP a les permissions nécessaires pour créer des dossiers et transférer des fichiers.
+1. **Vérifier les permissions FTP** : Assurez-vous que l'utilisateur FTP a les permissions nécessaires pour créer des dossiers et transférer des fichiers.
 
-3. **Vérifier la configuration du serveur FTP** :
+2. **Vérifier la configuration du serveur FTP** :
    - Le serveur doit accepter les connexions depuis GitHub Actions
    - Certains serveurs nécessitent le mode passif FTP (activé par défaut dans l'action)
-   - Vérifiez les limites de timeout du serveur FTP
+   - Vérifiez les limites de timeout du serveur FTP (actuellement 900 secondes)
+
+3. **Alternative : Exclure vendor** : Si vous avez accès SSH et Composer sur le serveur, vous pouvez modifier le workflow pour exclure `vendor` et l'installer directement sur le serveur après le déploiement.
 
 4. **Logs détaillés** : Le workflow utilise `log-level: verbose` pour fournir plus d'informations en cas d'erreur.
 
