@@ -1,0 +1,101 @@
+name: Déploiement FTP en Production
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+env:
+  PHP_VERSION: '8.2'
+
+jobs:
+  deploy:
+    name: Déploiement via FTP
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Configuration PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: ctype, iconv, pdo, pdo_pgsql
+          coverage: none
+
+      - name: Récupération du cache Composer
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
+
+      - name: Installation des dépendances
+        run: |
+          composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
+
+      - name: Optimisation du cache Symfony
+        run: |
+          php bin/console cache:clear --env=prod --no-debug
+          php bin/console cache:warmup --env=prod --no-debug
+
+      - name: Préparation des fichiers pour le déploiement
+        run: |
+          # Créer un répertoire de déploiement
+          mkdir -p deploy
+          
+          # Copier les fichiers nécessaires
+          cp -r bin deploy/
+          cp -r config deploy/
+          cp -r migrations deploy/
+          cp -r public deploy/
+          cp -r src deploy/
+          cp -r templates deploy/
+          cp composer.json deploy/
+          cp composer.lock deploy/
+          cp symfony.lock deploy/ 2>/dev/null || true
+          
+          # Copier vendor (ou commenter cette ligne si vous installez sur le serveur)
+          cp -r vendor deploy/
+          
+          # Créer le répertoire var pour le cache (sera créé automatiquement mais on s'assure qu'il existe)
+          mkdir -p deploy/var
+          
+          # Créer un fichier .gitkeep pour var (si nécessaire)
+          touch deploy/var/.gitkeep
+
+      - name: Déploiement via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./deploy/
+          server-dir: ${{ secrets.FTP_REMOTE_DIR }}
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            **/.env*
+            **/.env.local*
+            **/.env.*.local
+            **/var/cache/**
+            **/var/log/**
+            **/var/sessions/**
+            **/.DS_Store
+            **/Thumbs.db
+            **/compose.yaml
+            **/compose.override.yaml
+            **/*.md
+            **/tests/**
+            **/.phpunit.result.cache
+
+      - name: Nettoyage
+        if: always()
+        run: |
+          rm -rf deploy
+
