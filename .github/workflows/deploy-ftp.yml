@@ -155,24 +155,7 @@ jobs:
           echo "</pre>";
           PHPEOF
           
-          # Créer un répertoire pour les scripts seuls (déploiement en deux étapes)
-          mkdir -p deploy-scripts
-          cp deploy/extract-deployment.php deploy-scripts/
-          mkdir -p deploy-scripts/public
-          cp deploy/extract-deployment.php deploy-scripts/public/
-
-      - name: Déploiement des scripts (étape 1)
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./deploy-scripts/
-          server-dir: ${{ secrets.FTP_REMOTE_DIR }}
-          log-level: verbose
-          dangerous-clean-slate: false
-
-      - name: Déploiement de l'archive ZIP (étape 2)
+      - name: Déploiement de l'archive ZIP via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
           server: ${{ secrets.FTP_SERVER }}
@@ -185,10 +168,10 @@ jobs:
           exclude: |
             **/.git*
             **/.git*/**
-            **/public/**
+            **/extract-deployment.php
 
       - name: Nettoyage
         if: always()
         run: |
-          rm -rf deploy deploy-scripts
+          rm -rf deploy
 
