@@ -200,7 +200,23 @@ Après chaque déploiement, si vous avez accès SSH, connectez-vous sur votre se
 
 3. ✅ **Vérification de l'application** : Vérifiez que l'application est accessible via votre navigateur (ex: https://api.madabooking.mg/)
 
-## Dépannage
+## Diagnostic et Dépannage
+
+### Script de Diagnostic
+
+Un script de diagnostic est disponible pour identifier les problèmes de configuration :
+
+1. **Accédez à :** `https://api.madabooking.mg/diagnostic.php`
+2. Le script vérifie automatiquement :
+   - ✅ Version PHP et extensions requises
+   - ✅ Fichiers essentiels présents
+   - ✅ Permissions des dossiers
+   - ✅ Configuration `.env.local`
+   - ✅ Clés JWT
+   - ✅ Connexion à la base de données
+   - ✅ Logs d'erreur récents
+
+3. **IMPORTANT :** Supprimez le fichier `diagnostic.php` après utilisation pour des raisons de sécurité.
 
 ### Erreur de connexion FTP (ECONNRESET ou timeout 900 secondes)
 
