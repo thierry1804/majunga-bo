@@ -75,6 +75,9 @@ APP_SECRET=votre_secret_ici
 # Base de données
 DATABASE_URL="postgresql://user:password@localhost:5432/dbname?serverVersion=16&charset=utf8"
 
+# Routing
+DEFAULT_URI="https://votre-domaine.com"
+
 # JWT (si vous utilisez JWT)
 JWT_SECRET_KEY=%kernel.project_dir%/config/jwt/private.pem
 JWT_PUBLIC_KEY=%kernel.project_dir%/config/jwt/public.pem
@@ -82,6 +85,8 @@ JWT_PASSPHRASE=votre_passphrase
 
 # Mailer (si vous utilisez l'envoi d'emails)
 MAILER_DSN=smtp://user:pass@smtp.example.com:587
+MAILER_FROM_EMAIL="noreply@votre-domaine.com"
+MAILER_FROM_NAME="Votre Application"
 ```
 
 ### 3. Clés JWT

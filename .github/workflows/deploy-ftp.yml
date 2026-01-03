@@ -33,6 +33,9 @@ jobs:
           APP_DEBUG=false
           APP_SECRET=build_secret_key_for_ci_cd_only_not_for_production
           DATABASE_URL="postgresql://user:password@localhost:5432/dbname?serverVersion=16&charset=utf8"
+          DEFAULT_URI="http://localhost"
+          MAILER_FROM_EMAIL="noreply@example.com"
+          MAILER_FROM_NAME=""
           EOF
 
       - name: Récupération du cache Composer
