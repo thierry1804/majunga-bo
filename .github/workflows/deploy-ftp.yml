@@ -14,6 +14,7 @@ jobs:
   deploy:
     name: Déploiement via FTP
     runs-on: ubuntu-latest
+    environment: production
     
     steps:
       - name: Checkout du code

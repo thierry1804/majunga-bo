@@ -10,12 +10,13 @@ Ce guide explique comment configurer le déploiement automatique de l'applicatio
 
 ## Configuration des Secrets GitHub
 
-Pour que le workflow GitHub Actions puisse se connecter à votre serveur FTP, vous devez configurer les secrets suivants dans votre dépôt GitHub :
+Pour que le workflow GitHub Actions puisse se connecter à votre serveur FTP, vous devez configurer les secrets suivants dans l'**environnement "production"** de votre dépôt GitHub :
 
 1. Allez dans votre dépôt GitHub
 2. Cliquez sur **Settings** (Paramètres)
-3. Dans le menu de gauche, cliquez sur **Secrets and variables** > **Actions**
-4. Cliquez sur **New repository secret** pour chaque secret suivant :
+3. Dans le menu de gauche, cliquez sur **Environments**
+4. Cliquez sur **production** (ou créez-le s'il n'existe pas)
+5. Dans la section **Environment secrets**, cliquez sur **Add environment secret** pour chaque secret suivant :
 
 ### Secrets à configurer
 
@@ -34,6 +35,8 @@ FTP_USERNAME: monuser
 FTP_PASSWORD: MonMotDePasse123!
 FTP_REMOTE_DIR: /public_html
 ```
+
+**Important** : Ces secrets doivent être configurés dans l'environnement "production", pas comme des secrets de dépôt. Le workflow utilise `environment: production` pour accéder à ces secrets.
 
 ## Déclenchement du Déploiement
 
