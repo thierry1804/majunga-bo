@@ -5,8 +5,6 @@ namespace App\Entity;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
-use ApiPlatform\Metadata\Post;
-use App\State\UserPasswordHasher;
 use App\Repository\UserRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
@@ -19,13 +17,6 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[ApiResource(
     operations: [
         new GetCollection(security: "is_granted('ROLE_ADMIN')"),
-        new Post(
-            uriTemplate: '/register',
-            denormalizationContext: ['groups' => ['user:write']],
-            normalizationContext: ['groups' => ['user:read']],
-            security: "is_granted('PUBLIC_ACCESS')",
-            processor: UserPasswordHasher::class
-        ),
         new Get(
             normalizationContext: ['groups' => ['user:read']],
             security: "is_granted('ROLE_USER')"

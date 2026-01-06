@@ -63,6 +63,22 @@ class AuthController extends AbstractController
         $hashedPassword = $this->passwordHasher->hashPassword($user, $data['password']);
         $user->setPassword($hashedPassword);
 
+        // Gérer le rôle optionnel
+        if (isset($data['role'])) {
+            $role = $data['role'];
+            
+            // Valider le format du rôle
+            if (!is_string($role) || !str_starts_with($role, 'ROLE_')) {
+                return new JsonResponse(
+                    ['message' => 'Le rôle doit commencer par "ROLE_" (ex: ROLE_ADMIN, ROLE_USER)'],
+                    Response::HTTP_BAD_REQUEST
+                );
+            }
+            
+            // Définir le rôle (ROLE_USER sera ajouté automatiquement par getRoles())
+            $user->setRoles([$role]);
+        }
+
         // Valider l'entité
         $errors = $this->validator->validate($user);
         if (count($errors) > 0) {
@@ -88,6 +104,7 @@ class AuthController extends AbstractController
             'user' => [
                 'id' => $user->getId(),
                 'email' => $user->getEmail(),
+                'roles' => $user->getRoles(),
             ],
         ], Response::HTTP_CREATED);
     }
@@ -134,6 +151,79 @@ class AuthController extends AbstractController
             'user' => [
                 'id' => $user->getId(),
                 'email' => $user->getEmail(),
+            ],
+        ], Response::HTTP_OK);
+    }
+
+    #[Route('/users/{id}/promote', name: 'promote_user', methods: ['POST'])]
+    public function promoteUser(int $id, Request $request): JsonResponse
+    {
+        // Vérifier que l'utilisateur actuel est admin
+        $currentUser = $this->getUser();
+        if (!$currentUser instanceof User || !in_array('ROLE_ADMIN', $currentUser->getRoles(), true)) {
+            return new JsonResponse(
+                ['message' => 'Accès refusé. Seuls les administrateurs peuvent promouvoir des utilisateurs.'],
+                Response::HTTP_FORBIDDEN
+            );
+        }
+
+        // Récupérer les données de la requête
+        $data = json_decode($request->getContent(), true);
+
+        if (!isset($data['role'])) {
+            return new JsonResponse(
+                ['message' => 'Le champ "role" est requis'],
+                Response::HTTP_BAD_REQUEST
+            );
+        }
+
+        $role = $data['role'];
+        
+        // Valider le format du rôle
+        if (!is_string($role) || !str_starts_with($role, 'ROLE_')) {
+            return new JsonResponse(
+                ['message' => 'Le rôle doit commencer par "ROLE_" (ex: ROLE_ADMIN, ROLE_USER)'],
+                Response::HTTP_BAD_REQUEST
+            );
+        }
+
+        // Récupérer l'utilisateur à promouvoir
+        $targetUser = $this->entityManager->getRepository(User::class)->find($id);
+
+        if (!$targetUser) {
+            return new JsonResponse(
+                ['message' => 'Utilisateur non trouvé'],
+                Response::HTTP_NOT_FOUND
+            );
+        }
+
+        // Empêcher de se promouvoir soi-même (sécurité supplémentaire)
+        if ($targetUser->getId() === $currentUser->getId()) {
+            return new JsonResponse(
+                ['message' => 'Vous ne pouvez pas modifier vos propres rôles'],
+                Response::HTTP_BAD_REQUEST
+            );
+        }
+
+        // Récupérer les rôles actuels et ajouter le nouveau rôle
+        $currentRoles = $targetUser->getRoles();
+        
+        // Si le rôle n'est pas déjà présent, l'ajouter
+        if (!in_array($role, $currentRoles, true)) {
+            // Retirer ROLE_USER du tableau car il est toujours ajouté automatiquement
+            $rolesToSet = array_filter($currentRoles, fn($r) => $r !== 'ROLE_USER');
+            $rolesToSet[] = $role;
+            $targetUser->setRoles($rolesToSet);
+            
+            $this->entityManager->flush();
+        }
+
+        return new JsonResponse([
+            'message' => 'Utilisateur promu avec succès',
+            'user' => [
+                'id' => $targetUser->getId(),
+                'email' => $targetUser->getEmail(),
+                'roles' => $targetUser->getRoles(),
             ],
         ], Response::HTTP_OK);
     }

@@ -38,6 +38,10 @@ services:
         arguments:
             $processor: '@api_platform.doctrine.orm.state.persist_processor'
     
+    App\State\TourImageProcessor:
+        arguments:
+            $processor: '@App\State\TourUuidGenerator'
+    
     App\Service\EmailService:
         arguments:
             $fromEmail: '%env(MAILER_FROM_EMAIL)%'
@@ -48,3 +52,8 @@ services:
         decorates: 'api_platform.openapi.factory'
         arguments: ['@App\OpenApi\JwtBearerDecorator.inner']
         autoconfigure: false
+    
+    # Adaptateur pour convertir RateLimiterFactory en RequestRateLimiterInterface
+    App\Limiter\LoginRequestRateLimiter:
+        arguments:
+            $factory: '@limiter.login'

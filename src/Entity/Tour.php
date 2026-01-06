@@ -10,6 +10,7 @@ use ApiPlatform\Metadata\Patch;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
 use App\Repository\TourRepository;
+use App\State\TourImageProcessor;
 use App\State\TourUuidGenerator;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -29,7 +30,7 @@ use Symfony\Component\Validator\Constraints as Assert;
             denormalizationContext: ['groups' => ['tour:write']],
             normalizationContext: ['groups' => ['tour:read']],
             security: "is_granted('ROLE_ADMIN')",
-            processor: TourUuidGenerator::class
+            processor: TourImageProcessor::class
         ),
         new Get(
             normalizationContext: ['groups' => ['tour:read']],
@@ -38,12 +39,14 @@ use Symfony\Component\Validator\Constraints as Assert;
         new Put(
             denormalizationContext: ['groups' => ['tour:write']],
             normalizationContext: ['groups' => ['tour:read']],
-            security: "is_granted('ROLE_ADMIN')"
+            security: "is_granted('ROLE_ADMIN')",
+            processor: TourImageProcessor::class
         ),
         new Patch(
             denormalizationContext: ['groups' => ['tour:write']],
             normalizationContext: ['groups' => ['tour:read']],
-            security: "is_granted('ROLE_ADMIN')"
+            security: "is_granted('ROLE_ADMIN')",
+            processor: TourImageProcessor::class
         ),
         new Delete(
             security: "is_granted('ROLE_ADMIN')"
@@ -83,11 +86,11 @@ class Tour
     #[ORM\Column(type: Types::JSON)]
     #[Assert\NotNull]
     #[Groups(['tour:read', 'tour:write'])]
-    private array $highlights = [];
+    private ?array $highlights = null;
 
-    #[ORM\Column(name: 'image_url', type: Types::TEXT, nullable: true)]
+    #[ORM\Column(name: 'image_urls', type: Types::JSON, nullable: true)]
     #[Groups(['tour:read', 'tour:write'])]
-    private ?string $imageUrl = null;
+    private ?array $imageUrls = null;
 
     #[ORM\Column(name: 'is_active', type: Types::BOOLEAN, nullable: true, options: ['default' => true])]
     #[Groups(['tour:read', 'tour:write'])]
@@ -100,6 +103,12 @@ class Tour
     #[ORM\Column(name: 'updated_at', type: Types::DATETIMETZ_IMMUTABLE, nullable: true)]
     #[Groups(['tour:read'])]
     private ?\DateTimeImmutable $updatedAt = null;
+
+    public function __construct()
+    {
+        $this->highlights = null;
+        $this->imageUrls = null;
+    }
 
     public function getId(): ?string
     {
@@ -163,24 +172,75 @@ class Tour
 
     public function getHighlights(): array
     {
+        // Initialiser la propriété si elle est null
+        if ($this->highlights === null) {
+            $this->highlights = [];
+        }
         return $this->highlights;
     }
 
-    public function setHighlights(array $highlights): static
+    /**
+     * @param string[]|null $highlights
+     */
+    public function setHighlights(?array $highlights): static
     {
-        $this->highlights = $highlights;
+        $this->highlights = $highlights ?? [];
 
         return $this;
     }
 
-    public function getImageUrl(): ?string
+    /**
+     * @return string[]
+     */
+    public function getImageUrls(): array
     {
-        return $this->imageUrl;
+        // Initialiser la propriété si elle est null
+        if ($this->imageUrls === null) {
+            $this->imageUrls = [];
+        }
+        return $this->imageUrls;
     }
 
-    public function setImageUrl(?string $imageUrl): static
+    /**
+     * @param string[]|null $imageUrls
+     */
+    public function setImageUrls(?array $imageUrls): static
     {
-        $this->imageUrl = $imageUrl;
+        $this->imageUrls = $imageUrls ?? [];
+
+        return $this;
+    }
+
+    /**
+     * Ajoute une URL d'image à la liste
+     */
+    public function addImageUrl(string $imageUrl): static
+    {
+        // Initialiser la propriété si elle est null
+        if ($this->imageUrls === null) {
+            $this->imageUrls = [];
+        }
+        if (!in_array($imageUrl, $this->imageUrls, true)) {
+            $this->imageUrls[] = $imageUrl;
+        }
+
+        return $this;
+    }
+
+    /**
+     * Supprime une URL d'image de la liste
+     */
+    public function removeImageUrl(string $imageUrl): static
+    {
+        // Initialiser la propriété si elle est null
+        if ($this->imageUrls === null) {
+            $this->imageUrls = [];
+        }
+        $key = array_search($imageUrl, $this->imageUrls, true);
+        if ($key !== false) {
+            unset($this->imageUrls[$key]);
+            $this->imageUrls = array_values($this->imageUrls); // Réindexer le tableau
+        }
 
         return $this;
     }
@@ -234,6 +294,20 @@ class Tour
     public function setUpdatedAtValue(): void
     {
         $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    #[ORM\PrePersist]
+    #[ORM\PreUpdate]
+    public function initializeImageUrls(): void
+    {
+        // S'assurer que imageUrls est toujours un tableau, jamais null
+        if ($this->imageUrls === null) {
+            $this->imageUrls = [];
+        }
+        // S'assurer que highlights est toujours un tableau, jamais null
+        if ($this->highlights === null) {
+            $this->highlights = [];
+        }
     }
 }
 

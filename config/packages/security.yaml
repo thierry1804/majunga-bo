@@ -15,6 +15,13 @@ security:
             # Ensure dev tools and static assets are always allowed
             pattern: ^/(_profiler|_wdt|assets|build)/
             security: false
+        images:
+            # Allow public access to images (GET requests will be handled by PublicImageController)
+            # DELETE requests will be handled by ImageController which requires authentication
+            # Exclude /upload endpoint which requires authentication
+            pattern: ^/api/images/[^/]+\.(webp|jpg|jpeg|png|gif|bmp)$
+            stateless: true
+            security: false
         login:
             pattern: ^/api/login
             stateless: true
@@ -23,7 +30,7 @@ security:
                 success_handler: lexik_jwt_authentication.handler.authentication_success
                 failure_handler: lexik_jwt_authentication.handler.authentication_failure
             login_throttling:
-                limiter: 'limiter.login'
+                limiter: 'App\Limiter\LoginRequestRateLimiter'
                 max_attempts: 5
                 interval: '1 minute'
         api:
@@ -39,6 +46,7 @@ security:
         - { path: ^/api/login, roles: PUBLIC_ACCESS }
         - { path: ^/api/register, roles: PUBLIC_ACCESS }
         - { path: ^/api/docs, roles: PUBLIC_ACCESS }
+        - { path: ^/api/images/, roles: PUBLIC_ACCESS, methods: [GET] }
         - { path: ^/api/me, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/api/refresh, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
