@@ -7,7 +7,7 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
-
+    env(OPENWEATHER_API_KEY): ''
 services:
     # default configuration for services in *this* file
     _defaults:
@@ -38,6 +38,10 @@ services:
         arguments:
             $processor: '@api_platform.doctrine.orm.state.persist_processor'
     
+    App\State\SiteSettingUuidGenerator:
+        arguments:
+            $processor: '@api_platform.doctrine.orm.state.persist_processor'
+    
     App\State\TourImageProcessor:
         arguments:
             $processor: '@App\State\TourUuidGenerator'
@@ -45,7 +49,22 @@ services:
     App\Service\EmailService:
         arguments:
             $fromEmail: '%env(MAILER_FROM_EMAIL)%'
-            $fromName: '%env(string:default::MAILER_FROM_NAME:)%'
+            $fromName: '%env(default::string:MAILER_FROM_NAME)%'
+
+    App\Controller\Public\PublicBookingController:
+        arguments:
+            $publicBookingLimiter: '@limiter.public_booking'
+    
+    App\Service\PayPalService:
+        arguments:
+            $clientId: '%env(default::string:PAYPAL_CLIENT_ID)%'
+            $clientSecret: '%env(default::string:PAYPAL_CLIENT_SECRET)%'
+            $mode: '%env(default::string:PAYPAL_MODE)%'
+            $webhookId: '%env(default::string:PAYPAL_WEBHOOK_ID)%'
+
+    App\Controller\ProxyController:
+        arguments:
+            $openWeatherApiKey: '%env(default::string:OPENWEATHER_API_KEY)%'
     
     # Décorateur OpenAPI pour ajouter les endpoints d'authentification
     App\OpenApi\JwtBearerDecorator:

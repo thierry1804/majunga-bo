@@ -19,21 +19,26 @@ final class Version20260106075421 extends AbstractMigration
 
     public function up(Schema $schema): void
     {
-        // Créer une nouvelle colonne image_urls de type JSON
-        $this->addSql('ALTER TABLE tours ADD COLUMN image_urls JSON DEFAULT NULL');
+        $columns = $this->connection->fetchFirstColumn(
+            "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tours'"
+        );
 
-        // Migrer les données existantes : convertir les valeurs non-null de image_url en tableau JSON
-        $this->addSql("
-            UPDATE tours 
-            SET image_urls = CASE 
-                WHEN image_url IS NOT NULL AND image_url != '' 
-                THEN json_build_array(image_url)::json
-                ELSE '[]'::json
-            END
-        ");
+        if (!in_array('image_urls', $columns, true)) {
+            $this->addSql('ALTER TABLE tours ADD COLUMN image_urls JSON DEFAULT NULL');
+        }
 
-        // Supprimer l'ancienne colonne image_url
-        $this->addSql('ALTER TABLE tours DROP COLUMN image_url');
+        if (in_array('image_url', $columns, true)) {
+            $this->addSql("
+                UPDATE tours
+                SET image_urls = CASE
+                    WHEN image_url IS NOT NULL AND image_url != ''
+                    THEN JSON_ARRAY(image_url)
+                    ELSE JSON_ARRAY()
+                END
+                WHERE image_urls IS NULL
+            ");
+            $this->addSql('ALTER TABLE tours DROP COLUMN image_url');
+        }
     }
 
     public function down(Schema $schema): void

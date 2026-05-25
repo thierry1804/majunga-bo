@@ -24,17 +24,11 @@ final class TourImageProcessor implements ProcessorInterface
             return $this->processor->process($data, $operation, $uriVariables, $context);
         }
 
-        // Récupérer les imageUrls actuels (via réflexion pour voir la valeur réelle avant le getter)
         $reflection = new \ReflectionClass($data);
         $property = $reflection->getProperty('imageUrls');
         $property->setAccessible(true);
         $rawImageUrls = $property->getValue($data);
         
-        // Log pour déboguer (à retirer en production)
-        error_log('TourImageProcessor - Raw imageUrls: ' . json_encode($rawImageUrls));
-        error_log('TourImageProcessor - Operation: ' . $operation->getName());
-        
-        // Si imageUrls est null (non initialisé), l'initialiser à un tableau vide
         if ($rawImageUrls === null) {
             $rawImageUrls = [];
         }
@@ -51,14 +45,11 @@ final class TourImageProcessor implements ProcessorInterface
             
             // Si l'entité est déjà gérée, forcer la détection du changement
             if ($this->entityManager->contains($data)) {
-                // Créer un nouveau tableau pour forcer Doctrine à détecter le changement
                 $this->entityManager->getUnitOfWork()->recomputeSingleEntityChangeSet(
                     $this->entityManager->getClassMetadata(Tour::class),
                     $data
                 );
             }
-            
-            error_log('TourImageProcessor - Valid URLs after filter: ' . json_encode($validUrls));
         } else {
             // Si ce n'est pas un tableau, initialiser à un tableau vide
             $data->setImageUrls([]);

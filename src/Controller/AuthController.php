@@ -57,27 +57,12 @@ class AuthController extends AbstractController
             );
         }
 
-        // Créer un nouvel utilisateur
+        // Créer un nouvel utilisateur (ROLE_USER uniquement — pas de rôle custom via register public)
         $user = new User();
         $user->setEmail($data['email']);
         $hashedPassword = $this->passwordHasher->hashPassword($user, $data['password']);
         $user->setPassword($hashedPassword);
-
-        // Gérer le rôle optionnel
-        if (isset($data['role'])) {
-            $role = $data['role'];
-            
-            // Valider le format du rôle
-            if (!is_string($role) || !str_starts_with($role, 'ROLE_')) {
-                return new JsonResponse(
-                    ['message' => 'Le rôle doit commencer par "ROLE_" (ex: ROLE_ADMIN, ROLE_USER)'],
-                    Response::HTTP_BAD_REQUEST
-                );
-            }
-            
-            // Définir le rôle (ROLE_USER sera ajouté automatiquement par getRoles())
-            $user->setRoles([$role]);
-        }
+        $user->setRoles([]);
 
         // Valider l'entité
         $errors = $this->validator->validate($user);

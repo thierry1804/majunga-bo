@@ -91,6 +91,19 @@ class ShuttleSchedule
     #[Groups(['shuttle_schedule:read', 'shuttle_schedule:write'])]
     private ?string $direction = null;
 
+    #[ORM\Column(name: 'available_seats', type: Types::INTEGER, options: ['default' => 20])]
+    #[Assert\PositiveOrZero]
+    #[Groups(['shuttle_schedule:read', 'shuttle_schedule:write'])]
+    private int $availableSeats = 20;
+
+    #[ORM\Column(name: 'shuttle_from', type: Types::STRING, length: 255, nullable: true)]
+    #[Groups(['shuttle_schedule:read', 'shuttle_schedule:write'])]
+    private ?string $from = null;
+
+    #[ORM\Column(name: 'shuttle_to', type: Types::STRING, length: 255, nullable: true)]
+    #[Groups(['shuttle_schedule:read', 'shuttle_schedule:write'])]
+    private ?string $to = null;
+
     #[ORM\Column(name: 'created_at', type: Types::DATETIMETZ_IMMUTABLE, nullable: true)]
     #[Groups(['shuttle_schedule:read'])]
     private ?\DateTimeImmutable $createdAt = null;
@@ -179,6 +192,42 @@ class ShuttleSchedule
     public function setDirection(?string $direction): static
     {
         $this->direction = $direction;
+
+        return $this;
+    }
+
+    public function getAvailableSeats(): int
+    {
+        return $this->availableSeats;
+    }
+
+    public function setAvailableSeats(int $availableSeats): static
+    {
+        $this->availableSeats = $availableSeats;
+
+        return $this;
+    }
+
+    public function getFrom(): ?string
+    {
+        return $this->from;
+    }
+
+    public function setFrom(?string $from): static
+    {
+        $this->from = $from;
+
+        return $this;
+    }
+
+    public function getTo(): ?string
+    {
+        return $this->to;
+    }
+
+    public function setTo(?string $to): static
+    {
+        $this->to = $to;
 
         return $this;
     }

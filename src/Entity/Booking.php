@@ -64,6 +64,16 @@ class Booking
     #[Groups(['booking:read', 'booking:write'])]
     private ?Tour $tour = null;
 
+    #[ORM\ManyToOne(targetEntity: ShuttleSchedule::class)]
+    #[ORM\JoinColumn(name: 'shuttle_schedule_id', referencedColumnName: 'id', nullable: true, onDelete: 'SET NULL')]
+    #[Groups(['booking:read', 'booking:write'])]
+    private ?ShuttleSchedule $shuttleSchedule = null;
+
+    #[ORM\Column(name: 'service_type', type: Types::STRING, length: 20, options: ['default' => 'tour'])]
+    #[Assert\Choice(choices: ['tour', 'shuttle'])]
+    #[Groups(['booking:read', 'booking:write'])]
+    private string $serviceType = 'tour';
+
     #[ORM\Column(name: 'user_email', type: Types::TEXT)]
     #[Assert\NotBlank]
     #[Assert\Email]
@@ -101,6 +111,14 @@ class Booking
     #[Groups(['booking:read', 'booking:write'])]
     private ?string $paymentId = null;
 
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    #[Groups(['booking:read', 'booking:write'])]
+    private ?string $phone = null;
+
+    #[ORM\Column(name: 'special_requests', type: Types::TEXT, nullable: true)]
+    #[Groups(['booking:read', 'booking:write'])]
+    private ?string $specialRequests = null;
+
     #[ORM\Column(name: 'created_at', type: Types::DATETIMETZ_IMMUTABLE, nullable: true)]
     #[Groups(['booking:read'])]
     private ?\DateTimeImmutable $createdAt = null;
@@ -129,6 +147,30 @@ class Booking
     public function setTour(?Tour $tour): static
     {
         $this->tour = $tour;
+
+        return $this;
+    }
+
+    public function getShuttleSchedule(): ?ShuttleSchedule
+    {
+        return $this->shuttleSchedule;
+    }
+
+    public function setShuttleSchedule(?ShuttleSchedule $shuttleSchedule): static
+    {
+        $this->shuttleSchedule = $shuttleSchedule;
+
+        return $this;
+    }
+
+    public function getServiceType(): string
+    {
+        return $this->serviceType;
+    }
+
+    public function setServiceType(string $serviceType): static
+    {
+        $this->serviceType = $serviceType;
 
         return $this;
     }
@@ -213,6 +255,30 @@ class Booking
     public function setPaymentId(?string $paymentId): static
     {
         $this->paymentId = $paymentId;
+
+        return $this;
+    }
+
+    public function getPhone(): ?string
+    {
+        return $this->phone;
+    }
+
+    public function setPhone(?string $phone): static
+    {
+        $this->phone = $phone;
+
+        return $this;
+    }
+
+    public function getSpecialRequests(): ?string
+    {
+        return $this->specialRequests;
+    }
+
+    public function setSpecialRequests(?string $specialRequests): static
+    {
+        $this->specialRequests = $specialRequests;
 
         return $this;
     }

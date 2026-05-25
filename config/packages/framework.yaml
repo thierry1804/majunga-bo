@@ -18,6 +18,10 @@ framework:
             policy: 'fixed_window'
             limit: 3
             interval: '1 hour'
+        public_booking:
+            policy: 'fixed_window'
+            limit: 10
+            interval: '1 minute'
 
 when@test:
     framework:

@@ -33,6 +33,26 @@ security:
                 limiter: 'App\Limiter\LoginRequestRateLimiter'
                 max_attempts: 5
                 interval: '1 minute'
+        public_site_settings:
+            # Allow public access to site settings (GET requests only)
+            # IMPORTANT: Must be before the 'api' firewall to be evaluated first
+            pattern: ^/api/site_settings
+            stateless: true
+            security: false
+            methods: [GET]
+        site_settings_public:
+            # Allow public access to site-settings/public endpoints
+            pattern: ^/api/site-settings/public
+            stateless: true
+            security: false
+        public_api:
+            pattern: ^/api/public
+            stateless: true
+            security: false
+        webhooks:
+            pattern: ^/api/webhooks
+            stateless: true
+            security: false
         api:
             pattern: ^/api
             stateless: true
@@ -47,6 +67,11 @@ security:
         - { path: ^/api/register, roles: PUBLIC_ACCESS }
         - { path: ^/api/docs, roles: PUBLIC_ACCESS }
         - { path: ^/api/images/, roles: PUBLIC_ACCESS, methods: [GET] }
+        - { path: ^/api/site_settings, roles: PUBLIC_ACCESS, methods: [GET] }
+        - { path: ^/api/site-settings/public, roles: PUBLIC_ACCESS }
+        - { path: ^/api/public, roles: PUBLIC_ACCESS }
+        - { path: ^/api/webhooks, roles: PUBLIC_ACCESS }
+        - { path: ^/api/public/password, roles: PUBLIC_ACCESS }
         - { path: ^/api/me, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/api/refresh, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
