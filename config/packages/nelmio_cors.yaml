@@ -19,4 +19,4 @@ when@prod:
     nelmio_cors:
         paths:
             '^/api/':
-                allow_origin: ['%env(string:CORS_ALLOW_ORIGIN)%']
+                allow_origin: ['%cors_allow_origin%']

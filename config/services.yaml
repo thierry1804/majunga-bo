@@ -8,6 +8,8 @@
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
     env(OPENWEATHER_API_KEY): ''
+    env(CORS_ALLOW_ORIGIN): '*'
+    cors_allow_origin: '%env(CORS_ALLOW_ORIGIN)%'
 services:
     # default configuration for services in *this* file
     _defaults:

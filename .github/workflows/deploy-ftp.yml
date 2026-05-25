@@ -37,6 +37,7 @@ jobs:
           DEFAULT_URI="http://localhost"
           MAILER_FROM_EMAIL="noreply@example.com"
           MAILER_FROM_NAME=""
+          CORS_ALLOW_ORIGIN='*'
           EOF
 
       - name: Récupération du cache Composer
