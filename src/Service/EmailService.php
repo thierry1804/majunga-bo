@@ -3,6 +3,7 @@
 namespace App\Service;
 
 use Symfony\Component\Mailer\MailerInterface;
+use Symfony\Component\Mime\Address;
 use Symfony\Component\Mime\Email;
 use Symfony\Component\Mime\Exception\InvalidArgumentException;
 
@@ -38,7 +39,7 @@ class EmailService
         ?string $textBody = null
     ): void {
         $email = (new Email())
-            ->from($this->fromName ? sprintf('%s <%s>', $this->fromName, $this->fromEmail) : $this->fromEmail)
+            ->from(new Address($this->fromEmail, (string) $this->fromName))
             ->to($to)
             ->subject($subject);
 

@@ -8,6 +8,7 @@ use App\Repository\PasswordResetTokenRepository;
 use App\Repository\UserRepository;
 use App\Service\BrandedEmailRenderer;
 use App\Service\EmailService;
+use App\Service\MailLogger;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -26,7 +27,8 @@ class PasswordController extends AbstractController
         private EntityManagerInterface $entityManager,
         private EmailService $emailService,
         private BrandedEmailRenderer $emailRenderer,
-        private UserPasswordHasherInterface $passwordHasher
+        private UserPasswordHasherInterface $passwordHasher,
+        private MailLogger $mailLogger
     ) {
     }
 
@@ -66,8 +68,16 @@ class PasswordController extends AbstractController
                     null,
                     $message['text']
                 );
-            } catch (\Throwable) {
-                // Ignorer les erreurs email côté réponse publique
+                $this->mailLogger->info('E-mail envoyé.', ['type' => 'reinitialisation_mot_de_passe', 'to' => MailLogger::mask($user->getEmail())]);
+            } catch (\Throwable $e) {
+                // La réponse publique reste identique, mais l'échec est journalisé.
+                $this->mailLogger->error('Échec d\'envoi d\'e-mail.', [
+                    'type' => 'reinitialisation_mot_de_passe',
+                    'to' => MailLogger::mask($user->getEmail()),
+                    'exception' => $e::class,
+                    'message' => $e->getMessage(),
+                    'at' => basename($e->getFile()) . ':' . $e->getLine(),
+                ]);
             }
         }
 
