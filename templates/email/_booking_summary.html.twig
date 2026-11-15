@@ -1,0 +1,21 @@
+{% import 'email/_macros.html.twig' as m %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 8px 0;border-top:2px solid #0f4444;">
+    {{ m.row('Service', b.serviceLabel, true) }}
+    {{ m.row('Date', b.date) }}
+    {{ m.row('Participants', b.participants) }}
+    {{ m.row('Montant', b.amount, true) }}
+    {{ m.row('Statut', b.statusLabel) }}
+    {{ m.row('Référence', b.reference) }}
+</table>
+{% if b.routeLines %}
+    <p style="margin:20px 0 6px 0;font-family:Georgia,'Times New Roman',serif;font-size:18px;font-weight:bold;color:#0f4444;">{{ routeTitle|default('Votre trajet') }}</p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:2px solid #0f4444;">
+        {% for line in b.routeLines %}
+            {{ m.row(line.label, line.value) }}
+        {% endfor %}
+    </table>
+{% endif %}
+{% if b.specialRequests %}
+    <p style="margin:20px 0 6px 0;font-family:Georgia,'Times New Roman',serif;font-size:18px;font-weight:bold;color:#0f4444;">{{ requestsTitle|default('Vos demandes') }}</p>
+    <p style="margin:0;white-space:pre-line;color:#5c5349;">{{ b.specialRequests }}</p>
+{% endif %}

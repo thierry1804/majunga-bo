@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light">
+    <title>{% block title %}MadaBooking{% endblock %}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f5ede0;">
+    {# Texte d'aperçu affiché par les boîtes mail à côté de l'objet #}
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#f5ede0;">{% block preheader %}{% endblock %}</div>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f5ede0;">
+        <tr>
+            <td align="center" style="padding:28px 12px;">
+                <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;">
+
+                    {# En-tête : nom de la marque en deux tons, comme sur le site #}
+                    <tr>
+                        <td style="background-color:#0f4444;padding:30px 36px 26px 36px;border-radius:12px 12px 0 0;">
+                            <a href="{{ brand.siteUrl }}" style="text-decoration:none;font-family:Georgia,'Times New Roman',serif;font-size:30px;font-weight:bold;letter-spacing:-0.5px;color:#faf7f2;">Mada<span style="color:#d4704f;">Booking</span></a>
+                            <p style="margin:6px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:18px;color:#a8cfcf;">Circuits guidés et navette aéroport à Majunga</p>
+                        </td>
+                    </tr>
+                    <tr><td style="background-color:#c45c3e;height:4px;line-height:4px;font-size:0;">&nbsp;</td></tr>
+
+                    {# Contenu #}
+                    <tr>
+                        <td style="background-color:#faf7f2;padding:36px 36px 12px 36px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:24px;color:#2a2520;">
+                            {% block content %}{% endblock %}
+                        </td>
+                    </tr>
+
+                    {# Pied de page #}
+                    <tr>
+                        <td style="background-color:#faf7f2;padding:12px 36px 0 36px;">
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="border-top:1px solid #e8dcc8;font-size:0;line-height:0;">&nbsp;</td></tr></table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="background-color:#faf7f2;padding:20px 36px 32px 36px;border-radius:0 0 12px 12px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:21px;color:#5c5349;">
+                            <p style="margin:0 0 4px 0;font-weight:bold;color:#2a2520;">Une question ? Notre équipe locale vous répond.</p>
+                            <p style="margin:0;">
+                                WhatsApp et téléphone : <a href="tel:{{ brand.phoneLink }}" style="color:#145555;text-decoration:underline;">{{ brand.phone }}</a><br>
+                                E-mail : <a href="mailto:{{ brand.email }}" style="color:#145555;text-decoration:underline;">{{ brand.email }}</a><br>
+                                {{ brand.address }}
+                            </p>
+                        </td>
+                    </tr>
+
+                </table>
+                <p style="margin:18px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#8a8078;">
+                    {% block footnote %}Vous recevez ce message parce qu'une action a été effectuée sur madabooking.mg.{% endblock %}
+                </p>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

@@ -1,0 +1,31 @@
+Votre réservation MadaBooking est enregistrée
+
+Bonjour {{ b.name }},
+
+Merci d'avoir choisi MadaBooking. Voici le récapitulatif de votre réservation.
+
+Service : {{ b.serviceLabel }}
+Date : {{ b.date }}
+Participants : {{ b.participants }}
+Montant : {{ b.amount }}
+Statut : {{ b.statusLabel }}
+Référence : {{ b.reference }}
+{% if b.routeLines %}
+
+Votre trajet :
+{% for line in b.routeLines %}  {{ line.label }} : {{ line.value }}
+{% endfor %}{% endif %}{% if b.specialRequests %}
+
+Vos demandes :
+{{ b.specialRequests }}
+{% endif %}
+
+{% if b.isCustomShuttle %}Pour une navette sur mesure, notre équipe valide le trajet avec vous et vous confirme l'heure de passage.
+{% elseif b.isPending %}Votre réservation sera confirmée dès la réception du paiement.
+{% else %}Votre réservation est confirmée. Nous vous attendons avec plaisir à Majunga.
+{% endif %}
+
+Une question ? WhatsApp et téléphone : {{ brand.phone }} | {{ brand.email }}
+
+L'équipe MadaBooking
+{{ brand.siteUrl }}

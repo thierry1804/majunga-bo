@@ -1,0 +1,26 @@
+{% extends 'email/base.html.twig' %}
+{% import 'email/_macros.html.twig' as m %}
+
+{% block title %}Votre réservation MadaBooking{% endblock %}
+{% block preheader %}Réservation {{ b.serviceLabel }} le {{ b.date }} : nous l'avons bien enregistrée.{% endblock %}
+
+{% block content %}
+    <h1 style="margin:0 0 16px 0;font-family:Georgia,'Times New Roman',serif;font-size:28px;line-height:32px;font-weight:bold;letter-spacing:-0.5px;color:#2a2520;">Votre réservation est enregistrée</h1>
+    <p style="margin:0 0 20px 0;">Bonjour {{ b.name }},</p>
+    <p style="margin:0 0 20px 0;">Merci d'avoir choisi MadaBooking. Voici le récapitulatif de votre réservation. Conservez la référence, elle nous permet de vous retrouver rapidement.</p>
+
+    {% include 'email/_booking_summary.html.twig' %}
+
+    {% if b.isCustomShuttle %}
+        <p style="margin:20px 0;">Pour une navette sur mesure, notre équipe valide le trajet avec vous et vous confirme l'heure de passage.</p>
+    {% elseif b.isPending %}
+        <p style="margin:20px 0;">Votre réservation sera confirmée dès la réception du paiement. Vous recevrez alors un nouveau message.</p>
+    {% else %}
+        <p style="margin:20px 0;">Votre réservation est confirmée. Nous vous attendons avec plaisir à Majunga.</p>
+    {% endif %}
+
+    {{ m.button(brand.whatsappUrl, 'Écrire à notre équipe sur WhatsApp') }}
+    <p style="margin:0 0 24px 0;">À très bientôt à Majunga,<br><strong>L'équipe MadaBooking</strong></p>
+{% endblock %}
+
+{% block footnote %}Vous recevez ce message car une réservation a été faite avec cette adresse e-mail sur madabooking.mg.{% endblock %}

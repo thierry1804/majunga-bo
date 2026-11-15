@@ -9,6 +9,8 @@
 parameters:
     env(OPENWEATHER_API_KEY): ''
     env(CORS_ALLOW_ORIGIN): '*'
+    # Adresse publique du site : liens des e-mails (réinitialisation du mot de passe, back-office)
+    env(FRONTEND_URL): 'https://madabooking.mg'
     cors_allow_origin: '%env(CORS_ALLOW_ORIGIN)%'
 services:
     # default configuration for services in *this* file

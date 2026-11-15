@@ -1,0 +1,25 @@
+{% extends 'email/base.html.twig' %}
+{% import 'email/_macros.html.twig' as m %}
+
+{% block title %}Nouvelle réservation MadaBooking{% endblock %}
+{% block preheader %}{{ b.name }} a réservé : {{ b.serviceLabel }}, {{ b.date }}.{% endblock %}
+
+{% block content %}
+    <h1 style="margin:0 0 16px 0;font-family:Georgia,'Times New Roman',serif;font-size:28px;line-height:32px;font-weight:bold;letter-spacing:-0.5px;color:#2a2520;">Nouvelle réservation</h1>
+    <p style="margin:0 0 20px 0;">Une réservation vient d'être enregistrée sur le site.</p>
+
+    <p style="margin:0 0 6px 0;font-family:Georgia,'Times New Roman',serif;font-size:18px;font-weight:bold;color:#0f4444;">Client</p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px 0;border-top:2px solid #0f4444;">
+        {{ m.row('Nom', b.name, true) }}
+        {{ m.row('E-mail', b.email) }}
+        {{ m.row('Téléphone', b.phone ?: 'Non renseigné') }}
+    </table>
+
+    <p style="margin:0 0 6px 0;font-family:Georgia,'Times New Roman',serif;font-size:18px;font-weight:bold;color:#0f4444;">Réservation</p>
+    {% include 'email/_booking_summary.html.twig' with {routeTitle: 'Trajet', requestsTitle: 'Demandes du client'} %}
+
+    <p style="margin:24px 0 0 0;"></p>
+    {{ m.button(brand.adminUrl, 'Ouvrir les réservations') }}
+{% endblock %}
+
+{% block footnote %}Notification envoyée à l'adresse de gestion de MadaBooking.{% endblock %}

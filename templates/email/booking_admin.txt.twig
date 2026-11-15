@@ -1,0 +1,22 @@
+Nouvelle réservation sur MadaBooking
+
+Client : {{ b.name }}
+E-mail : {{ b.email }}
+Téléphone : {{ b.phone ?: 'Non renseigné' }}
+
+Service : {{ b.serviceLabel }}
+Date : {{ b.date }}
+Participants : {{ b.participants }}
+Montant : {{ b.amount }}
+Statut : {{ b.statusLabel }}
+Référence : {{ b.reference }}
+{% if b.routeLines %}
+
+Trajet :
+{% for line in b.routeLines %}  {{ line.label }} : {{ line.value }}
+{% endfor %}{% endif %}{% if b.specialRequests %}
+
+Demandes :
+{{ b.specialRequests }}
+{% endif %}
+Ouvrir les réservations : {{ brand.adminUrl }}
