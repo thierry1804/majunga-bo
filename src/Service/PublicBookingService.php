@@ -7,6 +7,7 @@ use App\Entity\ShuttleSchedule;
 use App\Entity\Tour;
 use App\Repository\ShuttleScheduleRepository;
 use App\Repository\TourRepository;
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -16,7 +17,8 @@ final class PublicBookingService
         private EntityManagerInterface $entityManager,
         private TourRepository $tourRepository,
         private ShuttleScheduleRepository $shuttleScheduleRepository,
-        private SiteSettingsHelper $siteSettings
+        private SiteSettingsHelper $siteSettings,
+        private ShuttleSeatService $seats
     ) {
     }
 
@@ -71,7 +73,15 @@ final class PublicBookingService
         if (!$bookingDate) {
             throw new \InvalidArgumentException('bookingDate est requis.');
         }
-        $booking->setBookingDate(new \DateTimeImmutable((string) $bookingDate));
+        $date = \DateTimeImmutable::createFromFormat('!Y-m-d', substr((string) $bookingDate, 0, 10));
+        if ($date === false) {
+            throw new \InvalidArgumentException('bookingDate invalide (AAAA-MM-JJ).');
+        }
+        if ($date < $this->seats->today()) {
+            throw new \InvalidArgumentException('La date de réservation est déjà passée.');
+        }
+        $booking->setBookingDate($date);
+        $schedule = null;
 
         if ($serviceType === 'tour') {
             $tour = $this->resolveTour($data['tour'] ?? null);
@@ -88,16 +98,41 @@ final class PublicBookingService
             if ($schedule === null || !$schedule->isActive()) {
                 throw new \InvalidArgumentException('Navette invalide ou inactive.');
             }
-            if ($schedule->getAvailableSeats() < $participants) {
-                throw new \InvalidArgumentException('Places insuffisantes pour cette navette.');
-            }
+            $this->assertSeatsAvailable($schedule, $date, $participants);
             $booking->setShuttleSchedule($schedule);
         }
 
-        $this->entityManager->persist($booking);
-        $this->entityManager->flush();
+        $this->entityManager->wrapInTransaction(function () use ($booking, $schedule, $date, $participants): void {
+            if ($schedule instanceof ShuttleSchedule) {
+                // Verrou sur la navette : deux réservations simultanées ne peuvent pas prendre les dernières places.
+                $this->entityManager->lock($schedule, LockMode::PESSIMISTIC_WRITE);
+                $this->assertSeatsAvailable($schedule, $date, $participants);
+            }
+
+            $this->entityManager->persist($booking);
+            $this->entityManager->flush();
+        });
 
         return $booking;
+    }
+
+    private function assertSeatsAvailable(ShuttleSchedule $schedule, \DateTimeImmutable $date, int $participants): void
+    {
+        if ($this->seats->hasDeparted($schedule, $date)) {
+            throw new \InvalidArgumentException('Cette navette est déjà partie aujourd\'hui. Choisissez un autre départ.');
+        }
+
+        $remaining = $this->seats->remainingSeats($schedule, $date);
+        if ($remaining <= 0) {
+            throw new \InvalidArgumentException('Cette navette est complète à cette date. Choisissez un autre départ ou un autre jour.');
+        }
+        if ($participants > $remaining) {
+            throw new \InvalidArgumentException(sprintf(
+                'Il ne reste que %d place%s sur cette navette à cette date.',
+                $remaining,
+                $remaining > 1 ? 's' : ''
+            ));
+        }
     }
 
     public function confirmBooking(Booking $booking, string $paymentId): Booking

@@ -34,6 +34,21 @@ final class SiteSettingsHelper
         return (float) $setting->getValue();
     }
 
+    /**
+     * Fuseau horaire du site (paramètre `timezone`), utilisé pour savoir si une date ou une heure est passée.
+     */
+    public function getTimezone(): \DateTimeZone
+    {
+        $setting = $this->repository->findByKey('timezone');
+        $name = $setting?->getValue() ?: 'Indian/Antananarivo';
+
+        try {
+            return new \DateTimeZone($name);
+        } catch (\Exception) {
+            return new \DateTimeZone('Indian/Antananarivo');
+        }
+    }
+
     public function getCurrency(): string
     {
         $setting = $this->repository->findByKey('currency');

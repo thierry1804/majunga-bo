@@ -3,6 +3,7 @@
 namespace App\Controller\Public;
 
 use App\Repository\ShuttleScheduleRepository;
+use App\Service\ShuttleSeatService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -14,7 +15,8 @@ class PublicShuttleScheduleController extends AbstractController
 {
     public function __construct(
         private ShuttleScheduleRepository $shuttleScheduleRepository,
-        private PublicApiSerializer $serializer
+        private PublicApiSerializer $serializer,
+        private ShuttleSeatService $seats
     ) {
     }
 
@@ -30,6 +32,32 @@ class PublicShuttleScheduleController extends AbstractController
         }
 
         $data = array_map(fn ($s) => $this->serializer->shuttleScheduleToArray($s), $schedules);
+
+        return new JsonResponse($data, Response::HTTP_OK);
+    }
+
+    /**
+     * Places restantes de chaque navette active pour une date : GET /api/public/shuttle_schedules/availability?date=AAAA-MM-JJ
+     */
+    #[Route('/shuttle_schedules/availability', name: 'shuttle_availability', methods: ['GET'])]
+    public function availability(Request $request): JsonResponse
+    {
+        $date = \DateTimeImmutable::createFromFormat('!Y-m-d', (string) $request->query->get('date'));
+        if ($date === false) {
+            return new JsonResponse(['message' => 'Le paramètre date est requis (AAAA-MM-JJ).'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $data = array_map(function ($schedule) use ($date) {
+            $reserved = $this->seats->reservedSeats($schedule, $date);
+
+            return [
+                'id' => $schedule->getId(),
+                'capacity' => $schedule->getAvailableSeats(),
+                'reserved' => $reserved,
+                'remaining' => max(0, $schedule->getAvailableSeats() - $reserved),
+                'departed' => $this->seats->hasDeparted($schedule, $date),
+            ];
+        }, $this->shuttleScheduleRepository->findActiveSchedules());
 
         return new JsonResponse($data, Response::HTTP_OK);
     }
