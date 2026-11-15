@@ -182,7 +182,7 @@ class ImageController extends AbstractController
             
             try {
                 // Décoder le token JWT
-                $payload = $this->jwtManager->decode($token);
+                $payload = $this->jwtManager->parse($token);
                 
                 if (!$payload || !isset($payload['username'])) {
                     return new JsonResponse(
