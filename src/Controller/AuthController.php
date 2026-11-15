@@ -57,7 +57,7 @@ class AuthController extends AbstractController
             );
         }
 
-        // Créer un nouvel utilisateur (ROLE_USER uniquement — pas de rôle custom via register public)
+        // Créer un nouvel utilisateur (ROLE_USER uniquement, pas de rôle custom via register public)
         $user = new User();
         $user->setEmail($data['email']);
         $hashedPassword = $this->passwordHasher->hashPassword($user, $data['password']);
