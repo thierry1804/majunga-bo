@@ -177,6 +177,15 @@ class ShuttleSchedule
         return $this->isActive;
     }
 
+    /**
+     * Accesseur reconnu pour la propriété `isActive` : sans lui, API Platform ne la juge pas lisible
+     * et ne la renvoie jamais en lecture, donc le back-office ne voit pas l'effet d'une activation.
+     */
+    public function getIsActive(): ?bool
+    {
+        return $this->isActive;
+    }
+
     public function setIsActive(?bool $isActive): static
     {
         $this->isActive = $isActive;
