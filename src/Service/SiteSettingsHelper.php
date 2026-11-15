@@ -21,6 +21,19 @@ final class SiteSettingsHelper
         return $this->getNumber('max_booking_participants', 20);
     }
 
+    /**
+     * Tarif au kilomètre (EUR) des navettes sur mesure.
+     */
+    public function getPricePerKm(): float
+    {
+        $setting = $this->repository->findByKey('price_per_km');
+        if ($setting === null || !is_numeric($setting->getValue()) || (float) $setting->getValue() <= 0) {
+            return 0.5;
+        }
+
+        return (float) $setting->getValue();
+    }
+
     public function getCurrency(): string
     {
         $setting = $this->repository->findByKey('currency');
