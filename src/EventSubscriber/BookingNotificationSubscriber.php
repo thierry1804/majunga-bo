@@ -19,7 +19,7 @@ final class BookingNotificationSubscriber
 
     public function postPersist(Booking $booking): void
     {
-        $serviceLabel = $booking->getServiceType() === 'shuttle' ? 'Navette' : 'Circuit';
+        $serviceLabel = match ($booking->getServiceType()) { 'shuttle' => 'Navette', 'custom_shuttle' => 'Navette sur mesure', default => 'Circuit' };
         $subject = sprintf('Confirmation de réservation — %s', $serviceLabel);
 
         $body = sprintf(

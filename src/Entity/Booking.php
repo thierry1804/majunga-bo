@@ -70,7 +70,7 @@ class Booking
     private ?ShuttleSchedule $shuttleSchedule = null;
 
     #[ORM\Column(name: 'service_type', type: Types::STRING, length: 20, options: ['default' => 'tour'])]
-    #[Assert\Choice(choices: ['tour', 'shuttle'])]
+    #[Assert\Choice(choices: ['tour', 'shuttle', 'custom_shuttle'])]
     #[Groups(['booking:read', 'booking:write'])]
     private string $serviceType = 'tour';
 

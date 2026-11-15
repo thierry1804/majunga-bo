@@ -30,7 +30,7 @@ final class PublicBookingService
         }
 
         $serviceType = $data['serviceType'] ?? 'tour';
-        if (!in_array($serviceType, ['tour', 'shuttle'], true)) {
+        if (!in_array($serviceType, ['tour', 'shuttle', 'custom_shuttle'], true)) {
             throw new \InvalidArgumentException('serviceType invalide.');
         }
 
@@ -79,6 +79,10 @@ final class PublicBookingService
                 throw new \InvalidArgumentException('Tour invalide ou inactif.');
             }
             $booking->setTour($tour);
+        } elseif ($serviceType === 'custom_shuttle') {
+            $route = $this->validateCustomRoute($data['customRoute'] ?? null);
+            $this->assertCustomShuttlePrice((float) ($data['totalPrice'] ?? 0), $route['distanceKm']);
+            $booking->setSpecialRequests($this->formatCustomRoute($route, $data['specialRequests'] ?? null));
         } else {
             $schedule = $this->resolveShuttleSchedule($data['shuttleSchedule'] ?? null);
             if ($schedule === null || !$schedule->isActive()) {
@@ -103,6 +107,99 @@ final class PublicBookingService
         $this->entityManager->flush();
 
         return $booking;
+    }
+
+    /**
+     * @return array{from: array{lat: float, lng: float, address: string}, to: array{lat: float, lng: float, address: string}, departureTime: string, distanceKm: float}
+     */
+    private function validateCustomRoute(mixed $route): array
+    {
+        if (!is_array($route)) {
+            throw new \InvalidArgumentException('customRoute est requis pour une navette sur mesure.');
+        }
+
+        $points = [];
+        foreach (['from', 'to'] as $key) {
+            $p = $route[$key] ?? null;
+            if (!is_array($p) || !isset($p['lat'], $p['lng']) || !is_numeric($p['lat']) || !is_numeric($p['lng'])) {
+                throw new \InvalidArgumentException(sprintf('customRoute.%s invalide.', $key));
+            }
+            $lat = (float) $p['lat'];
+            $lng = (float) $p['lng'];
+            if ($lat < -90 || $lat > 90 || $lng < -180 || $lng > 180) {
+                throw new \InvalidArgumentException(sprintf('Coordonnées de customRoute.%s hors limites.', $key));
+            }
+            $points[$key] = [
+                'lat' => $lat,
+                'lng' => $lng,
+                'address' => mb_substr(trim((string) ($p['address'] ?? '')), 0, 255),
+            ];
+        }
+
+        $time = (string) ($route['departureTime'] ?? '');
+        if (!preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $time)) {
+            throw new \InvalidArgumentException('customRoute.departureTime invalide (HH:MM).');
+        }
+
+        $distanceKm = $this->haversineKm($points['from'], $points['to']);
+        if ($distanceKm < 0.05) {
+            throw new \InvalidArgumentException('Le départ et l\'arrivée sont identiques.');
+        }
+
+        return [
+            'from' => $points['from'],
+            'to' => $points['to'],
+            'departureTime' => $time,
+            'distanceKm' => $distanceKm,
+        ];
+    }
+
+    /**
+     * Le client calcule la distance par la route (OSRM), toujours >= à vol d'oiseau.
+     * On borne donc le prix : au moins distance directe x tarif, au plus 3 fois cette valeur.
+     */
+    private function assertCustomShuttlePrice(float $totalPrice, float $directKm): void
+    {
+        $min = round($directKm * $this->siteSettings->getPricePerKm(), 2);
+        $max = $min * 3;
+
+        if ($totalPrice < $min - 0.01 || $totalPrice > $max + 0.01) {
+            throw new \InvalidArgumentException('Le prix ne correspond pas au trajet demandé.');
+        }
+    }
+
+    /**
+     * @param array{from: array{lat: float, lng: float, address: string}, to: array{lat: float, lng: float, address: string}, departureTime: string, distanceKm: float} $route
+     */
+    private function formatCustomRoute(array $route, mixed $userRequests): string
+    {
+        $lines = [
+            '[Navette sur mesure]',
+            sprintf('Départ : %s (%.6f, %.6f)', $route['from']['address'], $route['from']['lat'], $route['from']['lng']),
+            sprintf('Arrivée : %s (%.6f, %.6f)', $route['to']['address'], $route['to']['lat'], $route['to']['lng']),
+            sprintf('Heure souhaitée : %s', $route['departureTime']),
+            sprintf('Distance à vol d\'oiseau : %.2f km', $route['distanceKm']),
+        ];
+        $extra = trim((string) $userRequests);
+        if ($extra !== '') {
+            $lines[] = 'Demandes : ' . mb_substr($extra, 0, 1000);
+        }
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * @param array{lat: float, lng: float} $a
+     * @param array{lat: float, lng: float} $b
+     */
+    private function haversineKm(array $a, array $b): float
+    {
+        $r = 6371.0;
+        $dLat = deg2rad($b['lat'] - $a['lat']);
+        $dLng = deg2rad($b['lng'] - $a['lng']);
+        $h = sin($dLat / 2) ** 2 + cos(deg2rad($a['lat'])) * cos(deg2rad($b['lat'])) * sin($dLng / 2) ** 2;
+
+        return 2 * $r * asin(min(1.0, sqrt($h)));
     }
 
     private function resolveTour(mixed $tourRef): ?Tour
