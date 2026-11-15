@@ -6,6 +6,7 @@ use App\Entity\PasswordResetToken;
 use App\Entity\User;
 use App\Repository\PasswordResetTokenRepository;
 use App\Repository\UserRepository;
+use App\Service\BrandedEmailRenderer;
 use App\Service\EmailService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -24,6 +25,7 @@ class PasswordController extends AbstractController
         private PasswordResetTokenRepository $tokenRepository,
         private EntityManagerInterface $entityManager,
         private EmailService $emailService,
+        private BrandedEmailRenderer $emailRenderer,
         private UserPasswordHasherInterface $passwordHasher
     ) {
     }
@@ -54,13 +56,15 @@ class PasswordController extends AbstractController
             $this->entityManager->flush();
 
             try {
+                $message = $this->emailRenderer->passwordReset($plainToken);
                 $this->emailService->sendEmail(
                     $user->getEmail(),
                     'Réinitialisation de mot de passe MadaBooking',
-                    sprintf(
-                        "Bonjour,\n\nUtilisez ce token pour réinitialiser votre mot de passe :\n%s\n\nCe token expire dans 1 heure.\n",
-                        $plainToken
-                    )
+                    $message['html'],
+                    true,
+                    null,
+                    null,
+                    $message['text']
                 );
             } catch (\Throwable) {
                 // Ignorer les erreurs email côté réponse publique

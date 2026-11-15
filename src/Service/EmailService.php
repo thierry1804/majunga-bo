@@ -24,6 +24,7 @@ class EmailService
      * @param bool $isHtml Indique si le corps est en HTML
      * @param string|null $cc Copie carbone
      * @param string|null $bcc Copie carbone invisible
+     * @param string|null $textBody Version texte à joindre à un e-mail HTML
      * @return void
      * @throws InvalidArgumentException
      */
@@ -33,7 +34,8 @@ class EmailService
         string $body,
         bool $isHtml = false,
         ?string $cc = null,
-        ?string $bcc = null
+        ?string $bcc = null,
+        ?string $textBody = null
     ): void {
         $email = (new Email())
             ->from($this->fromName ? sprintf('%s <%s>', $this->fromName, $this->fromEmail) : $this->fromEmail)
@@ -42,6 +44,10 @@ class EmailService
 
         if ($isHtml) {
             $email->html($body);
+            // Version texte pour les boîtes mail qui n'affichent pas le HTML, et pour la délivrabilité.
+            if ($textBody !== null) {
+                $email->text($textBody);
+            }
         } else {
             $email->text($body);
         }
