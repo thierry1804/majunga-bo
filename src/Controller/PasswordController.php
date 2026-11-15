@@ -56,7 +56,7 @@ class PasswordController extends AbstractController
             try {
                 $this->emailService->sendEmail(
                     $user->getEmail(),
-                    'Réinitialisation de mot de passe — MadaBooking',
+                    'Réinitialisation de mot de passe MadaBooking',
                     sprintf(
                         "Bonjour,\n\nUtilisez ce token pour réinitialiser votre mot de passe :\n%s\n\nCe token expire dans 1 heure.\n",
                         $plainToken
